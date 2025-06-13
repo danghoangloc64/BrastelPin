@@ -42,13 +42,14 @@ namespace BrastelPin
         #region Profile Management
 
         /// <summary>
-        /// Creates a new profile in OmniLogin
+        /// Creates a new profile in OmniLogin with optional proxy configuration
         /// </summary>
         /// <param name="name">Profile name (optional)</param>
         /// <param name="group">Profile group (optional)</param>
         /// <param name="operatingSystem">Operating system (optional, defaults to "win")</param>
+        /// <param name="proxyResponse">Proxy configuration to embed in profile (optional)</param>
         /// <returns>Profile ID if successful, null otherwise</returns>
-        public async Task<string> CreateProfileAsync(string name = null, string group = null, string operatingSystem = "win")
+        public async Task<string> CreateProfileAsync(string name = null, string group = null, string operatingSystem = "win", ProxyResponse proxyResponse = null)
         {
             try
             {
@@ -66,6 +67,23 @@ namespace BrastelPin
 
                 if (!string.IsNullOrEmpty(operatingSystem))
                     profileData["os"] = operatingSystem;
+
+                // Add embedded proxy configuration if provided
+                if (proxyResponse?.data != null)
+                {
+                    var embeddedProxy = new JObject
+                    {
+                        ["name"] = $"Proxy_{DateTime.Now:yyyyMMdd_HHmmss}",
+                        ["proxy_type"] = "HTTP", // TMProxy typically uses HTTP
+                        ["host"] = ExtractProxyHost(proxyResponse.data.https),
+                        ["port"] = ExtractProxyPort(proxyResponse.data.https),
+                        ["user_name"] = proxyResponse.data.username ?? "",
+                        ["password"] = proxyResponse.data.password ?? ""
+                    };
+                    
+                    profileData["embedded_proxy"] = embeddedProxy;
+                    LogInfo($"Embedded proxy configured: {proxyResponse.data.https}");
+                }
 
                 var content = new StringContent(profileData.ToString(), Encoding.UTF8, "application/json");
 
@@ -525,6 +543,33 @@ namespace BrastelPin
         private void LogError(string message)
         {
             logAction?.Invoke($"[ERROR] {message}");
+        }
+
+        /// <summary>
+        /// Extracts host from proxy string (format: host:port)
+        /// </summary>
+        private string ExtractProxyHost(string proxyString)
+        {
+            if (string.IsNullOrEmpty(proxyString))
+                return "";
+
+            var parts = proxyString.Split(':');
+            return parts.Length > 0 ? parts[0] : "";
+        }
+
+        /// <summary>
+        /// Extracts port from proxy string (format: host:port)
+        /// </summary>
+        private int ExtractProxyPort(string proxyString)
+        {
+            if (string.IsNullOrEmpty(proxyString))
+                return 0;
+
+            var parts = proxyString.Split(':');
+            if (parts.Length > 1 && int.TryParse(parts[1], out int port))
+                return port;
+
+            return 0;
         }
 
         #endregion

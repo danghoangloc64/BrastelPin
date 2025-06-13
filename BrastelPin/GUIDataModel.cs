@@ -1,5 +1,7 @@
 ﻿using Newtonsoft.Json;
 using System.IO;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace BrastelPin
 {
@@ -10,8 +12,24 @@ namespace BrastelPin
         public string AccountCode { get; set; }
         public int PinFrom { get; set; }
         public int PinTo { get; set; }
-        public string TMProxy { get; set; }
+        public string TMProxy { get; set; } // Multi-line text containing proxy keys
         public string OmniloginURL { get; set; }
+        public int ConcurrentProfiles { get; set; }
+
+        [JsonIgnore]
+        public List<string> TMProxyKeys
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(TMProxy))
+                    return new List<string>();
+
+                return TMProxy.Split('\n')
+                    .Select(key => key.Trim())
+                    .Where(key => !string.IsNullOrEmpty(key))
+                    .ToList();
+            }
+        }
 
         public GUIDataModel()
         {
@@ -19,9 +37,9 @@ namespace BrastelPin
             PinFrom = 0;
             PinTo = 0;
             TMProxy = string.Empty;
-            OmniloginURL = string.Empty;
+            OmniloginURL = "http://localhost:35353/";
+            ConcurrentProfiles = 1;
         }
-
 
         public void SaveToFile()
         {
@@ -39,12 +57,47 @@ namespace BrastelPin
             try
             {
                 string json = File.ReadAllText(GUI_DATA_FILE_PATH);
-                return JsonConvert.DeserializeObject<GUIDataModel>(json) ?? new GUIDataModel();
+                var model = JsonConvert.DeserializeObject<GUIDataModel>(json) ?? new GUIDataModel();
+                
+                // Ensure ConcurrentProfiles has a valid default value
+                if (model.ConcurrentProfiles <= 0)
+                    model.ConcurrentProfiles = 1;
+                    
+                return model;
             }
             catch
             {
                 return new GUIDataModel();
             }
+        }
+
+        /// <summary>
+        /// Validates that the number of concurrent profiles doesn't exceed the number of proxy keys
+        /// </summary>
+        public bool ValidateConcurrentProfiles(out string errorMessage)
+        {
+            var proxyKeys = TMProxyKeys;
+            
+            if (proxyKeys.Count == 0)
+            {
+                errorMessage = "No proxy keys provided. Please add at least one proxy key.";
+                return false;
+            }
+
+            if (ConcurrentProfiles > proxyKeys.Count)
+            {
+                errorMessage = $"Number of concurrent profiles ({ConcurrentProfiles}) cannot be greater than the number of proxy keys ({proxyKeys.Count}).";
+                return false;
+            }
+
+            if (ConcurrentProfiles <= 0)
+            {
+                errorMessage = "Number of concurrent profiles must be greater than 0.";
+                return false;
+            }
+
+            errorMessage = string.Empty;
+            return true;
         }
     }
 }

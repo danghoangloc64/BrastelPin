@@ -42,6 +42,8 @@
             this.label5 = new System.Windows.Forms.Label();
             this.txtOmniloginURL = new System.Windows.Forms.TextBox();
             this.btnDeleteAllProfiles = new System.Windows.Forms.Button();
+            this.label6 = new System.Windows.Forms.Label();
+            this.txtConcurrentProfiles = new System.Windows.Forms.TextBox();
             this.SuspendLayout();
             // 
             // label1
@@ -55,9 +57,9 @@
             // 
             // txtAccountCode
             // 
-            this.txtAccountCode.Location = new System.Drawing.Point(99, 9);
+            this.txtAccountCode.Location = new System.Drawing.Point(117, 9);
             this.txtAccountCode.Name = "txtAccountCode";
-            this.txtAccountCode.Size = new System.Drawing.Size(235, 20);
+            this.txtAccountCode.Size = new System.Drawing.Size(242, 20);
             this.txtAccountCode.TabIndex = 0;
             this.txtAccountCode.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
             // 
@@ -72,9 +74,9 @@
             // 
             // txtPinFrom
             // 
-            this.txtPinFrom.Location = new System.Drawing.Point(99, 35);
+            this.txtPinFrom.Location = new System.Drawing.Point(117, 35);
             this.txtPinFrom.Name = "txtPinFrom";
-            this.txtPinFrom.Size = new System.Drawing.Size(97, 20);
+            this.txtPinFrom.Size = new System.Drawing.Size(106, 20);
             this.txtPinFrom.TabIndex = 1;
             this.txtPinFrom.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
             this.txtPinFrom.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.TextBoxPinKeyPress);
@@ -84,22 +86,23 @@
             this.label3.AutoSize = true;
             this.label3.Location = new System.Drawing.Point(12, 65);
             this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(52, 13);
+            this.label3.Size = new System.Drawing.Size(78, 13);
             this.label3.TabIndex = 0;
-            this.label3.Text = "TMProxy:";
+            this.label3.Text = "TMProxy Keys:";
             // 
             // txtTMProxy
             // 
-            this.txtTMProxy.Location = new System.Drawing.Point(99, 61);
+            this.txtTMProxy.Location = new System.Drawing.Point(117, 61);
+            this.txtTMProxy.Multiline = true;
             this.txtTMProxy.Name = "txtTMProxy";
-            this.txtTMProxy.Size = new System.Drawing.Size(235, 20);
+            this.txtTMProxy.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            this.txtTMProxy.Size = new System.Drawing.Size(242, 60);
             this.txtTMProxy.TabIndex = 3;
-            this.txtTMProxy.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
             // 
             // label4
             // 
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(206, 39);
+            this.label4.Location = new System.Drawing.Point(229, 39);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(20, 13);
             this.label4.TabIndex = 0;
@@ -107,16 +110,16 @@
             // 
             // txtPinTo
             // 
-            this.txtPinTo.Location = new System.Drawing.Point(239, 35);
+            this.txtPinTo.Location = new System.Drawing.Point(255, 35);
             this.txtPinTo.Name = "txtPinTo";
-            this.txtPinTo.Size = new System.Drawing.Size(95, 20);
+            this.txtPinTo.Size = new System.Drawing.Size(104, 20);
             this.txtPinTo.TabIndex = 2;
             this.txtPinTo.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
             this.txtPinTo.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.TextBoxPinKeyPress);
             // 
             // btnStart
             // 
-            this.btnStart.Location = new System.Drawing.Point(340, 9);
+            this.btnStart.Location = new System.Drawing.Point(509, 9);
             this.btnStart.Name = "btnStart";
             this.btnStart.Size = new System.Drawing.Size(101, 46);
             this.btnStart.TabIndex = 4;
@@ -127,7 +130,7 @@
             // btnStop
             // 
             this.btnStop.Enabled = false;
-            this.btnStop.Location = new System.Drawing.Point(340, 61);
+            this.btnStop.Location = new System.Drawing.Point(509, 61);
             this.btnStop.Name = "btnStop";
             this.btnStop.Size = new System.Drawing.Size(101, 46);
             this.btnStop.TabIndex = 5;
@@ -137,10 +140,10 @@
             // 
             // rtbLog
             // 
-            this.rtbLog.Location = new System.Drawing.Point(12, 121);
+            this.rtbLog.Location = new System.Drawing.Point(12, 181);
             this.rtbLog.Name = "rtbLog";
             this.rtbLog.ReadOnly = true;
-            this.rtbLog.Size = new System.Drawing.Size(429, 200);
+            this.rtbLog.Size = new System.Drawing.Size(598, 200);
             this.rtbLog.TabIndex = 6;
             this.rtbLog.Text = "";
             this.rtbLog.TextChanged += new System.EventHandler(this.rtbLog_TextChanged);
@@ -148,7 +151,7 @@
             // label5
             // 
             this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(12, 90);
+            this.label5.Location = new System.Drawing.Point(12, 130);
             this.label5.Name = "label5";
             this.label5.Size = new System.Drawing.Size(81, 13);
             this.label5.TabIndex = 0;
@@ -156,9 +159,9 @@
             // 
             // txtOmniloginURL
             // 
-            this.txtOmniloginURL.Location = new System.Drawing.Point(99, 87);
+            this.txtOmniloginURL.Location = new System.Drawing.Point(117, 127);
             this.txtOmniloginURL.Name = "txtOmniloginURL";
-            this.txtOmniloginURL.Size = new System.Drawing.Size(235, 20);
+            this.txtOmniloginURL.Size = new System.Drawing.Size(242, 20);
             this.txtOmniloginURL.TabIndex = 3;
             this.txtOmniloginURL.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
             // 
@@ -167,19 +170,40 @@
             this.btnDeleteAllProfiles.BackColor = System.Drawing.Color.Red;
             this.btnDeleteAllProfiles.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnDeleteAllProfiles.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
-            this.btnDeleteAllProfiles.Location = new System.Drawing.Point(12, 327);
+            this.btnDeleteAllProfiles.Location = new System.Drawing.Point(12, 387);
             this.btnDeleteAllProfiles.Name = "btnDeleteAllProfiles";
-            this.btnDeleteAllProfiles.Size = new System.Drawing.Size(429, 23);
+            this.btnDeleteAllProfiles.Size = new System.Drawing.Size(598, 23);
             this.btnDeleteAllProfiles.TabIndex = 7;
             this.btnDeleteAllProfiles.Text = "Nhấn để xóa hết profile, để bắt đầu chạy lại từ đầu";
             this.btnDeleteAllProfiles.UseVisualStyleBackColor = false;
             this.btnDeleteAllProfiles.Click += new System.EventHandler(this.btnDeleteAllProfiles_Click);
             // 
+            // label6
+            // 
+            this.label6.AutoSize = true;
+            this.label6.Location = new System.Drawing.Point(12, 156);
+            this.label6.Name = "label6";
+            this.label6.Size = new System.Drawing.Size(99, 13);
+            this.label6.TabIndex = 0;
+            this.label6.Text = "Concurrent Profiles:";
+            // 
+            // txtConcurrentProfiles
+            // 
+            this.txtConcurrentProfiles.Location = new System.Drawing.Point(117, 153);
+            this.txtConcurrentProfiles.Name = "txtConcurrentProfiles";
+            this.txtConcurrentProfiles.Size = new System.Drawing.Size(60, 20);
+            this.txtConcurrentProfiles.TabIndex = 8;
+            this.txtConcurrentProfiles.Text = "1";
+            this.txtConcurrentProfiles.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
+            this.txtConcurrentProfiles.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.TextBoxConcurrentProfilesKeyPress);
+            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(450, 361);
+            this.ClientSize = new System.Drawing.Size(622, 421);
+            this.Controls.Add(this.txtConcurrentProfiles);
+            this.Controls.Add(this.label6);
             this.Controls.Add(this.btnDeleteAllProfiles);
             this.Controls.Add(this.rtbLog);
             this.Controls.Add(this.btnStop);
@@ -220,6 +244,8 @@
         private System.Windows.Forms.Label label5;
         private System.Windows.Forms.TextBox txtOmniloginURL;
         private System.Windows.Forms.Button btnDeleteAllProfiles;
+        private System.Windows.Forms.Label label6;
+        private System.Windows.Forms.TextBox txtConcurrentProfiles;
     }
 }
 
