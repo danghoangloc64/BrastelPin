@@ -205,7 +205,6 @@ namespace BrastelPin
                         driver.Navigate().GoToUrl("https://www.brastel.com/eng/myaccount");
                         AddLog("[INFO] Successfully navigated to login page");
 
-                    CHECK_FUNCTION:
                         try
                         {
                             AddLog($"[INFO] Attempting login with PIN: {pinStr}");
@@ -233,6 +232,7 @@ namespace BrastelPin
                             AddLog("[INFO] Locating PIN input field");
                             var pinInput = driver.FindElement(By.Id("pinInput"));
 
+                        CHECK_PIN:
                             // Clear existing text
                             for (int i = 0; i < 10; i++)
                             {
@@ -309,7 +309,7 @@ namespace BrastelPin
                                 {
                                     pinStr = pin.ToString("D4");
                                     AddLog($"[INFO] Reusing profile for next PIN: {pinStr}");
-                                    goto CHECK_FUNCTION;
+                                    goto CHECK_PIN;
                                 }
                             }
                             else
