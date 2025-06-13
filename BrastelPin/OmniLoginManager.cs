@@ -11,201 +11,551 @@ using OpenQA.Selenium.Chrome;
 
 namespace BrastelPin
 {
-    public class OmniLoginProfileManager
+    public class OmniLoginProfileManager : IDisposable
     {
+        // Constants
+        private const int DEFAULT_TIMEOUT_SECONDS = 30;
+        private const int PROFILE_CLEANUP_DELAY_MS = 100;
+        private const int MAX_RETRY_ATTEMPTS = 3;
+
         private readonly string baseAddress; // e.g., "http://localhost:35353"
         private readonly HttpClient client;
+        private readonly Action<string> logAction;
+        private bool disposed = false;
 
-        public OmniLoginProfileManager(string baseAddress)
+        public OmniLoginProfileManager(string baseAddress, Action<string> logAction = null)
         {
-            this.baseAddress = baseAddress.TrimEnd('/');
-            this.client = new HttpClient();
+            this.baseAddress = baseAddress?.TrimEnd('/') ?? throw new ArgumentNullException(nameof(baseAddress));
+            this.logAction = logAction ?? ((msg) => Debug.WriteLine(msg));
+
+            this.client = new HttpClient
+            {
+                Timeout = TimeSpan.FromSeconds(DEFAULT_TIMEOUT_SECONDS)
+            };
+
+            // Set default headers
+            this.client.DefaultRequestHeaders.Add("User-Agent", "BrastelPin/1.0");
+
+            LogInfo($"OmniLoginProfileManager initialized with base address: {baseAddress}");
         }
 
-        // 1. Create new profile
-        public async Task<string> CreateProfileAsync(string name = "MyProfile")
+        #region Profile Management
+
+        /// <summary>
+        /// Creates a new profile in OmniLogin
+        /// </summary>
+        /// <param name="name">Profile name (optional)</param>
+        /// <param name="group">Profile group (optional)</param>
+        /// <param name="operatingSystem">Operating system (optional, defaults to "win")</param>
+        /// <returns>Profile ID if successful, null otherwise</returns>
+        public async Task<string> CreateProfileAsync(string name = null, string group = null, string operatingSystem = "win")
         {
             try
             {
-                // CORRECTED: Use standard POST request to the main profile endpoint
+                LogInfo($"Creating profile with name: {name ?? "default"}");
+
                 var createUrl = $"{baseAddress}/api/v1/profile";
-                var json = new JObject
+                var profileData = new JObject
                 {
-                    ["name"] = name,
-                    // You can add other parameters as needed
-                    // ["group"] = "Default", 
-                    // ["os"] = "win"
+                    ["name"] = string.IsNullOrEmpty(name) ? $"Profile_{DateTime.Now:yyyyMMdd_HHmmss}" : name
                 };
 
-                var content = new StringContent(json.ToString(), Encoding.UTF8, "application/json");
-                var response = await client.PostAsync(createUrl, content);
-                response.EnsureSuccessStatusCode();
+                // Add optional parameters
+                if (!string.IsNullOrEmpty(group))
+                    profileData["group"] = group;
 
-                var responseBody = await response.Content.ReadAsStringAsync();
-                var profileId = JObject.Parse(responseBody)["data"]?["id"]?.ToString();
+                if (!string.IsNullOrEmpty(operatingSystem))
+                    profileData["os"] = operatingSystem;
 
-                if (string.IsNullOrEmpty(profileId))
-                    throw new Exception("Profile ID is null or empty after creation.");
+                var content = new StringContent(profileData.ToString(), Encoding.UTF8, "application/json");
 
-                Debug.WriteLine($"[Info] Successfully created profile '{name}' with ID: {profileId}");
-                return profileId;
+                using (var response = await client.PostAsync(createUrl, content))
+                {
+                    var responseBody = await response.Content.ReadAsStringAsync();
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        LogError($"Failed to create profile. Status: {response.StatusCode}, Response: {responseBody}");
+                        return null;
+                    }
+
+                    var responseJson = JObject.Parse(responseBody);
+                    var profileId = responseJson["data"]?["id"]?.ToString();
+
+                    if (string.IsNullOrEmpty(profileId))
+                    {
+                        LogError("Profile ID is null or empty after creation");
+                        return null;
+                    }
+
+                    LogInfo($"Successfully created profile '{name}' with ID: {profileId}");
+                    return profileId;
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                LogError($"HTTP error while creating profile: {ex.Message}");
+                return null;
+            }
+            catch (TaskCanceledException ex)
+            {
+                LogError($"Timeout while creating profile: {ex.Message}");
+                return null;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[Error] Failed to create profile: {ex.Message}");
+                LogError($"Unexpected error while creating profile: {ex.Message}");
                 return null;
             }
         }
 
-        // 2. Start profile and return remote debugging port
+        /// <summary>
+        /// Starts a profile and returns the remote debugging port
+        /// </summary>
+        /// <param name="profileId">Profile ID to start</param>
+        /// <returns>Port number if successful, 0 otherwise</returns>
         public async Task<int> StartProfileAndGetPortAsync(string profileId)
         {
+            if (string.IsNullOrEmpty(profileId))
+            {
+                LogError("Profile ID cannot be null or empty");
+                return 0;
+            }
+
             try
             {
-                // This endpoint seems correct for starting the browser for automation
+                LogInfo($"Starting profile: {profileId}");
+
                 var startUrl = $"{baseAddress}/api/v1/browser/start";
-                var content = new StringContent($"{{\"profileId\":\"{profileId}\"}}", Encoding.UTF8, "application/json");
-                var response = await client.PostAsync(startUrl, content);
-                response.EnsureSuccessStatusCode();
+                var startData = new JObject
+                {
+                    ["profileId"] = profileId
+                };
 
-                var responseBody = await response.Content.ReadAsStringAsync();
-                var port = JObject.Parse(responseBody)["data"]?["port"]?.ToObject<int>() ?? 0;
+                var content = new StringContent(startData.ToString(), Encoding.UTF8, "application/json");
 
-                if (port == 0)
-                    throw new Exception("Received invalid port from OmniLogin");
+                using (var response = await client.PostAsync(startUrl, content))
+                {
+                    var responseBody = await response.Content.ReadAsStringAsync();
 
-                Debug.WriteLine($"[Info] Started profile {profileId} on port {port}");
-                return port;
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        LogError($"Failed to start profile {profileId}. Status: {response.StatusCode}, Response: {responseBody}");
+                        return 0;
+                    }
+
+                    var responseJson = JObject.Parse(responseBody);
+                    var port = responseJson["data"]?["port"]?.ToObject<int>() ?? 0;
+
+                    if (port == 0)
+                    {
+                        LogError($"Received invalid port from OmniLogin for profile {profileId}");
+                        return 0;
+                    }
+
+                    LogInfo($"Successfully started profile {profileId} on port {port}");
+                    return port;
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                LogError($"HTTP error while starting profile {profileId}: {ex.Message}");
+                return 0;
+            }
+            catch (TaskCanceledException ex)
+            {
+                LogError($"Timeout while starting profile {profileId}: {ex.Message}");
+                return 0;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[Error] Failed to start profile {profileId}: {ex.Message}");
-                throw;
+                LogError($"Unexpected error while starting profile {profileId}: {ex.Message}");
+                return 0;
             }
         }
 
-        // 3. Get ChromeDriver from port (external control)
-        public ChromeDriver GetChromeDriverFromPort(int port)
+        /// <summary>
+        /// Creates a Chrome driver instance connected to the specified port
+        /// </summary>
+        /// <param name="port">Remote debugging port</param>
+        /// <param name="implicitWaitSeconds">Implicit wait timeout in seconds</param>
+        /// <returns>ChromeDriver instance</returns>
+        public ChromeDriver GetChromeDriverFromPort(int port, int implicitWaitSeconds = 10)
         {
+            if (port <= 0)
+            {
+                LogError($"Invalid port number: {port}");
+                throw new ArgumentException("Port must be greater than 0", nameof(port));
+            }
+
             try
             {
-                var options = new ChromeOptions
-                {
-                    DebuggerAddress = $"localhost:{port}"
-                };
-                return new ChromeDriver(options);
+                LogInfo($"Creating ChromeDriver for port {port}");
+
+                var options = new ChromeOptions();
+                options.DebuggerAddress = $"localhost:{port}";
+
+                // Additional Chrome options for stability
+                options.AddArgument("--no-sandbox");
+                options.AddArgument("--disable-dev-shm-usage");
+                options.AddArgument("--disable-gpu");
+                options.AddArgument("--disable-extensions");
+                options.AddArgument("--disable-default-apps");
+
+                var driver = new ChromeDriver(options);
+
+                // Set implicit wait
+                driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(implicitWaitSeconds);
+
+                LogInfo($"Successfully created ChromeDriver for port {port}");
+                return driver;
             }
             catch (WebDriverException ex)
             {
-                Debug.WriteLine($"[Error] ChromeDriver connection failed: {ex.Message}");
+                LogError($"WebDriver error connecting to port {port}: {ex.Message}");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                LogError($"Unexpected error creating ChromeDriver for port {port}: {ex.Message}");
                 throw;
             }
         }
 
-        // 4. Stop profile
-        public async Task StopProfileAsync(string profileId)
+        /// <summary>
+        /// Stops a running profile
+        /// </summary>
+        /// <param name="profileId">Profile ID to stop</param>
+        public async Task<bool> StopProfileAsync(string profileId)
         {
+            if (string.IsNullOrEmpty(profileId))
+            {
+                LogError("Profile ID cannot be null or empty");
+                return false;
+            }
+
             try
             {
-                // CORRECTED: Use GET method and the /stop/{profileId} endpoint as per docs
-                var stopUrl = $"{baseAddress}/stop/{profileId}";
-                var response = await client.GetAsync(stopUrl); // Use GET, no content body
+                LogInfo($"Stopping profile: {profileId}");
 
-                if (response.IsSuccessStatusCode)
+                // Try the browser-specific stop endpoint first
+                var stopUrl = $"{baseAddress}/api/v1/browser/stop";
+                var stopData = new JObject
                 {
-                    Debug.WriteLine($"[Info] Successfully sent stop request for profile {profileId}");
-                }
-                else
+                    ["profileId"] = profileId
+                };
+
+                var content = new StringContent(stopData.ToString(), Encoding.UTF8, "application/json");
+                using (var response = await client.PostAsync(stopUrl, content))
                 {
-                    var error = await response.Content.ReadAsStringAsync();
-                    Debug.WriteLine($"[Error] Failed to stop profile {profileId}. Status: {response.StatusCode}, Response: {error}");
+                    if (response.IsSuccessStatusCode)
+                    {
+                        LogInfo($"Successfully stopped profile {profileId} using browser API");
+                        return true;
+                    }
                 }
+
+                // Fallback to the legacy endpoint
+                var legacyStopUrl = $"{baseAddress}/stop/{profileId}";
+                using (var response = await client.GetAsync(legacyStopUrl))
+                {
+                    if (response.IsSuccessStatusCode)
+                    {
+                        LogInfo($"Successfully stopped profile {profileId} using legacy API");
+                        return true;
+                    }
+                    else
+                    {
+                        var error = await response.Content.ReadAsStringAsync();
+                        LogError($"Failed to stop profile {profileId}. Status: {response.StatusCode}, Response: {error}");
+                        return false;
+                    }
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                LogError($"HTTP error while stopping profile {profileId}: {ex.Message}");
+                return false;
+            }
+            catch (TaskCanceledException ex)
+            {
+                LogError($"Timeout while stopping profile {profileId}: {ex.Message}");
+                return false;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[Error] Exception while stopping profile {profileId}: {ex.Message}");
+                LogError($"Unexpected error while stopping profile {profileId}: {ex.Message}");
+                return false;
             }
         }
 
-        // 5. Delete a single profile
-        public async Task DeleteProfileAsync(string profileId)
+        /// <summary>
+        /// Deletes a profile
+        /// </summary>
+        /// <param name="profileId">Profile ID to delete</param>
+        public async Task<bool> DeleteProfileAsync(string profileId)
         {
+            if (string.IsNullOrEmpty(profileId))
+            {
+                LogError("Profile ID cannot be null or empty");
+                return false;
+            }
+
             try
             {
-                // CORRECTED: Use DELETE method on the specific profile resource URL
+                LogInfo($"Deleting profile: {profileId}");
+
                 var deleteUrl = $"{baseAddress}/api/v1/profile/{profileId}";
-                var response = await client.DeleteAsync(deleteUrl);
 
-                if (response.IsSuccessStatusCode)
+                using (var response = await client.DeleteAsync(deleteUrl))
                 {
-                    Debug.WriteLine($"[Info] Successfully deleted profile {profileId}");
+                    if (response.IsSuccessStatusCode)
+                    {
+                        LogInfo($"Successfully deleted profile {profileId}");
+                        return true;
+                    }
+                    else
+                    {
+                        var error = await response.Content.ReadAsStringAsync();
+                        LogError($"Failed to delete profile {profileId}. Status: {response.StatusCode}, Response: {error}");
+                        return false;
+                    }
                 }
-                else
-                {
-                    var error = await response.Content.ReadAsStringAsync();
-                    Debug.WriteLine($"[Error] Failed to delete profile {profileId}. Status: {response.StatusCode}, Response: {error}");
-                }
+            }
+            catch (HttpRequestException ex)
+            {
+                LogError($"HTTP error while deleting profile {profileId}: {ex.Message}");
+                return false;
+            }
+            catch (TaskCanceledException ex)
+            {
+                LogError($"Timeout while deleting profile {profileId}: {ex.Message}");
+                return false;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[Error] Exception while deleting profile {profileId}: {ex.Message}");
+                LogError($"Unexpected error while deleting profile {profileId}: {ex.Message}");
+                return false;
             }
         }
 
-        // 6. Delete all existing profiles
+        /// <summary>
+        /// Deletes all existing profiles with retry mechanism
+        /// </summary>
         public async Task<bool> DeleteAllProfilesAsync()
         {
             try
             {
+                LogInfo("Starting bulk deletion of all profiles");
+
                 var profileIds = await GetAllProfileIdsAsync();
-                Debug.WriteLine($"[Info] Found {profileIds.Count} profiles to delete.");
-                foreach (var id in profileIds)
+                if (profileIds.Count == 0)
                 {
-                    await DeleteProfileAsync(id);
-                    await Task.Delay(100); // Small delay to avoid overwhelming the API
+                    LogInfo("No profiles found to delete");
+                    return true;
                 }
-                Debug.WriteLine($"[Info] Finished deleting profiles.");
-                return true;
+
+                LogInfo($"Found {profileIds.Count} profiles to delete");
+
+                int successCount = 0;
+                int failCount = 0;
+
+                foreach (var profileId in profileIds)
+                {
+                    // Stop profile first, then delete
+                    bool stopped = await StopProfileAsync(profileId);
+                    if (stopped)
+                    {
+                        await Task.Delay(PROFILE_CLEANUP_DELAY_MS); // Small delay between operations
+                    }
+
+                    bool deleted = await DeleteProfileAsync(profileId);
+                    if (deleted)
+                    {
+                        successCount++;
+                    }
+                    else
+                    {
+                        failCount++;
+                    }
+
+                    await Task.Delay(PROFILE_CLEANUP_DELAY_MS); // Small delay to avoid overwhelming the API
+                }
+
+                LogInfo($"Profile deletion completed. Success: {successCount}, Failed: {failCount}");
+                return failCount == 0;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[Error] Failed to delete all profiles: {ex.Message}");
+                LogError($"Failed to delete all profiles: {ex.Message}");
+                return false;
             }
-            return false;
         }
 
-        // Helper method to get all profile IDs
+        #endregion
+
+        #region Helper Methods
+
+        /// <summary>
+        /// Gets all profile IDs from the OmniLogin API
+        /// </summary>
         private async Task<List<string>> GetAllProfileIdsAsync()
         {
             var ids = new List<string>();
+
             try
             {
-                // CORRECTED: Use the main profile endpoint to get a list
+                LogInfo("Retrieving all profile IDs");
+
                 var listUrl = $"{baseAddress}/api/v1/profile";
-                var response = await client.GetAsync(listUrl);
-                response.EnsureSuccessStatusCode();
 
-                var responseBody = await response.Content.ReadAsStringAsync();
-                // Assuming the response is a JSON object with a "data" array of profiles
-                var profiles = JObject.Parse(responseBody)["data"];
-
-                if (profiles != null && profiles.Type == JTokenType.Array)
+                using (var response = await client.GetAsync(listUrl))
                 {
-                    foreach (var profile in profiles)
+                    if (!response.IsSuccessStatusCode)
                     {
-                        var id = profile["id"]?.ToString();
-                        if (!string.IsNullOrEmpty(id))
+                        LogError($"Failed to get profile list. Status: {response.StatusCode}");
+                        return ids;
+                    }
+
+                    var responseBody = await response.Content.ReadAsStringAsync();
+                    var responseJson = JObject.Parse(responseBody);
+                    var profiles = responseJson["data"];
+
+                    if (profiles != null && profiles.Type == JTokenType.Array)
+                    {
+                        foreach (var profile in profiles)
                         {
-                            ids.Add(id);
+                            var id = profile["id"]?.ToString();
+                            if (!string.IsNullOrEmpty(id))
+                            {
+                                ids.Add(id);
+                            }
                         }
                     }
+
+                    LogInfo($"Retrieved {ids.Count} profile IDs");
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                LogError($"HTTP error while getting profile IDs: {ex.Message}");
+            }
+            catch (TaskCanceledException ex)
+            {
+                LogError($"Timeout while getting profile IDs: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                LogError($"Unexpected error while getting profile IDs: {ex.Message}");
+            }
+
+            return ids;
+        }
+
+        /// <summary>
+        /// Checks if the OmniLogin service is reachable
+        /// </summary>
+        public async Task<bool> IsServiceAvailableAsync()
+        {
+            try
+            {
+                LogInfo("Checking OmniLogin service availability");
+
+                var healthCheckUrl = $"{baseAddress}/api/v1/profile";
+
+                using (var response = await client.GetAsync(healthCheckUrl))
+                {
+                    bool isAvailable = response.IsSuccessStatusCode;
+                    LogInfo($"OmniLogin service availability: {isAvailable}");
+                    return isAvailable;
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[Error] Failed to get all profile IDs: {ex.Message}");
+                LogError($"OmniLogin service is not available: {ex.Message}");
+                return false;
             }
-            return ids;
         }
+
+        /// <summary>
+        /// Gets profile information by ID
+        /// </summary>
+        public async Task<JObject> GetProfileInfoAsync(string profileId)
+        {
+            if (string.IsNullOrEmpty(profileId))
+            {
+                LogError("Profile ID cannot be null or empty");
+                return null;
+            }
+
+            try
+            {
+                LogInfo($"Getting profile info for: {profileId}");
+
+                var infoUrl = $"{baseAddress}/api/v1/profile/{profileId}";
+
+                using (var response = await client.GetAsync(infoUrl))
+                {
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        LogError($"Failed to get profile info for {profileId}. Status: {response.StatusCode}");
+                        return null;
+                    }
+
+                    var responseBody = await response.Content.ReadAsStringAsync();
+                    return JObject.Parse(responseBody);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError($"Error getting profile info for {profileId}: {ex.Message}");
+                return null;
+            }
+        }
+
+        #endregion
+
+        #region Logging
+
+        private void LogInfo(string message)
+        {
+            logAction?.Invoke($"[INFO] {message}");
+        }
+
+        private void LogError(string message)
+        {
+            logAction?.Invoke($"[ERROR] {message}");
+        }
+
+        #endregion
+
+        #region IDisposable Implementation
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposed)
+            {
+                if (disposing)
+                {
+                    LogInfo("Disposing OmniLoginProfileManager");
+                    client?.Dispose();
+                }
+
+                disposed = true;
+            }
+        }
+
+        ~OmniLoginProfileManager()
+        {
+            Dispose(false);
+        }
+
+        #endregion
     }
 }
