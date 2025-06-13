@@ -580,7 +580,7 @@ namespace BrastelPin
             _proxyPool = new ConcurrentDictionary<string, ProxyInfo>();
             
             // Setup rotation timer for 150 seconds
-            _rotationTimer = new System.Threading.Timer(RotateProxies, null, TimeSpan.Zero, TimeSpan.FromSeconds(PROXY_EXPIRATION_SECONDS));
+            _rotationTimer = new System.Threading.Timer(RotateProxies, null, TimeSpan.FromSeconds(PROXY_EXPIRATION_SECONDS), TimeSpan.FromSeconds(PROXY_EXPIRATION_SECONDS));
         }
 
         public async Task InitializeProxiesAsync()
