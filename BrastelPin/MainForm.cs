@@ -143,7 +143,6 @@ namespace BrastelPin
             int totalProcessed = 0;
             ProxyInfo currentProxyInfo = null;
             System.Threading.Timer proxyRotationTimer = null;
-            DateTime lastProxyRotation = DateTime.Now;
 
             AddLog($"[INFO] Worker thread {workerId} started");
 
@@ -168,31 +167,58 @@ namespace BrastelPin
                 AddLog($"[INFO] Worker {workerId}: Assigned dedicated API key {dedicatedApiKey.Substring(0, Math.Min(10, dedicatedApiKey.Length))}... with proxy {currentProxyInfo.ProxyResponse.data.https}");
 
                 // Setup proxy rotation timer for 150 seconds
-                proxyRotationTimer = new System.Threading.Timer(async (state) =>
-                {
-                    try
-                    {
-                        if (!cancellationToken.IsCancellationRequested)
-                        {
-                            AddLog($"[INFO] Worker {workerId}: Auto-rotating proxy for dedicated key {dedicatedApiKey.Substring(0, Math.Min(10, dedicatedApiKey.Length))}...");
-                            var newProxyInfo = await _proxyManager.GetProxyForDedicatedKeyAsync(dedicatedApiKey);
-                            if (newProxyInfo != null)
-                            {
-                                currentProxyInfo = newProxyInfo;
-                                lastProxyRotation = DateTime.Now;
-                                AddLog($"[INFO] Worker {workerId}: Proxy auto-rotated successfully to {currentProxyInfo.ProxyResponse.data.https}");
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        AddLog($"[ERROR] Worker {workerId}: Error during auto proxy rotation: {ex.Message}");
-                    }
-                }, null, TimeSpan.FromSeconds(150), TimeSpan.FromSeconds(150));
+                //proxyRotationTimer = new System.Threading.Timer(async (state) =>
+                //{
+                //    try
+                //    {
+                //        if (!cancellationToken.IsCancellationRequested)
+                //        {
+                //            AddLog($"[INFO] Worker {workerId}: Auto-rotating proxy for dedicated key {dedicatedApiKey.Substring(0, Math.Min(10, dedicatedApiKey.Length))}...");
+                //            var newProxyInfo = await _proxyManager.GetProxyForDedicatedKeyAsync(dedicatedApiKey);
+                //            if (newProxyInfo != null)
+                //            {
+                //                currentProxyInfo = newProxyInfo;
+                //                lastProxyRotation = DateTime.Now;
+                //                AddLog($"[INFO] Worker {workerId}: Proxy auto-rotated successfully to {currentProxyInfo.ProxyResponse.data.https}");
+                //            }
+                //        }
+                //    }
+                //    catch (Exception ex)
+                //    {
+                //        AddLog($"[ERROR] Worker {workerId}: Error during auto proxy rotation: {ex.Message}");
+                //    }
+                //}, null, TimeSpan.FromSeconds(150), TimeSpan.FromSeconds(150));
 
                 while (!cancellationToken.IsCancellationRequested)
                 {
                     countCheck1Profile = 0;
+
+                    if ((DateTime.Now - currentProxyInfo.StartTime).TotalSeconds > 150)
+                    {
+                        try
+                        {
+                            if (!cancellationToken.IsCancellationRequested)
+                            {
+                                AddLog($"[INFO] Worker {workerId}: Rotating proxy for dedicated key {dedicatedApiKey.Substring(0, Math.Min(10, dedicatedApiKey.Length))}...");
+                                var newProxyInfo = await _proxyManager.GetProxyForDedicatedKeyAsync(dedicatedApiKey);
+                                if (newProxyInfo != null)
+                                {
+                                    currentProxyInfo = newProxyInfo;
+                                    AddLog($"[INFO] Worker {workerId}: Proxy rotated successfully to {currentProxyInfo.ProxyResponse.data.https}");
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            AddLog($"[ERROR] Worker {workerId}: Error during proxy rotation: {ex.Message}");
+                        }
+                    }
+
+
+
+
+
+
 
                     int pin;
                     lock (_queueLock)
@@ -696,7 +722,8 @@ namespace BrastelPin
                         var proxyInfo = new ProxyInfo
                         {
                             ApiKey = apiKey,
-                            ProxyResponse = proxyResponse
+                            ProxyResponse = proxyResponse,
+                            StartTime = DateTime.Now,
                         };
 
                         // Update the proxy in pool
@@ -719,8 +746,6 @@ namespace BrastelPin
 
             return null; // Should never reach here due to infinite retry loop
         }
-
-
 
         private async Task<ProxyResponse> GetProxyAsync(string apiKey)
         {
@@ -776,5 +801,6 @@ namespace BrastelPin
     {
         public string ApiKey { get; set; }
         public ProxyResponse ProxyResponse { get; set; }
+        public DateTime StartTime { get; set; }
     }
 }
