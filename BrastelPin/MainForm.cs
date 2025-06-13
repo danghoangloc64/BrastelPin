@@ -425,7 +425,7 @@ namespace BrastelPin
             _gUIDataModel = GUIDataModel.LoadFromFile();
             AddLog("[INFO] Configuration loaded from file");
 
-            _omniLoginProfileManager = new OmniLoginProfileManager(_gUIDataModel.OmniloginURL);
+            _omniLoginProfileManager = new OmniLoginProfileManager(_gUIDataModel.OmniloginURL, AddLog);
             AddLog($"[INFO] OmniLogin manager initialized with URL: {_gUIDataModel.OmniloginURL}");
 
             // Load UI values
