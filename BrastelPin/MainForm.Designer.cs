@@ -41,6 +41,7 @@
             this.rtbLog = new System.Windows.Forms.RichTextBox();
             this.label5 = new System.Windows.Forms.Label();
             this.txtOmniloginURL = new System.Windows.Forms.TextBox();
+            this.btnDeleteAllProfiles = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // label1
@@ -160,11 +161,25 @@
             this.txtOmniloginURL.TabIndex = 3;
             this.txtOmniloginURL.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
             // 
+            // btnDeleteAllProfiles
+            // 
+            this.btnDeleteAllProfiles.BackColor = System.Drawing.Color.Red;
+            this.btnDeleteAllProfiles.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnDeleteAllProfiles.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
+            this.btnDeleteAllProfiles.Location = new System.Drawing.Point(12, 327);
+            this.btnDeleteAllProfiles.Name = "btnDeleteAllProfiles";
+            this.btnDeleteAllProfiles.Size = new System.Drawing.Size(429, 23);
+            this.btnDeleteAllProfiles.TabIndex = 7;
+            this.btnDeleteAllProfiles.Text = "Nhấn để xóa hết profile, để bắt đầu chạy lại từ đầu";
+            this.btnDeleteAllProfiles.UseVisualStyleBackColor = false;
+            this.btnDeleteAllProfiles.Click += new System.EventHandler(this.btnDeleteAllProfiles_Click);
+            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(450, 337);
+            this.ClientSize = new System.Drawing.Size(450, 361);
+            this.Controls.Add(this.btnDeleteAllProfiles);
             this.Controls.Add(this.rtbLog);
             this.Controls.Add(this.btnStop);
             this.Controls.Add(this.btnStart);
@@ -203,6 +218,7 @@
         private System.Windows.Forms.RichTextBox rtbLog;
         private System.Windows.Forms.Label label5;
         private System.Windows.Forms.TextBox txtOmniloginURL;
+        private System.Windows.Forms.Button btnDeleteAllProfiles;
     }
 }
 

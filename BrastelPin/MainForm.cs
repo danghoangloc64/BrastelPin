@@ -3,7 +3,6 @@ using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
@@ -48,17 +47,13 @@ namespace BrastelPin
                 return;
             }
 
-            _omniLoginProfileManager = new OmniLoginProfileManager(_gUIDataModel.OmniloginURL);
 
-
-
-
-            // Khởi tạo queue PIN từ 0000 đến 9999
+            // Khởi tạo queue PIN
             _pinQueue.Clear();
             for (int i = _gUIDataModel.PinFrom; i <= _gUIDataModel.PinTo; i++)
                 _pinQueue.Enqueue(i);
 
-            rtbLog.AppendText($"[INFO] Bắt đầu kiểm tra mã PIN cho accCode: {_gUIDataModel.AccountCode}\n");
+            AddLog($"[INFO] Bắt đầu kiểm tra mã PIN cho accCode: {_gUIDataModel.AccountCode}.");
 
             ToogleControl(false);
 
@@ -66,7 +61,7 @@ namespace BrastelPin
 
             await Task.Run(() => WorkerThread());
 
-            rtbLog.AppendText("[INFO] Đã hoàn tất kiểm tra toàn bộ mã PIN.\n");
+            AddLog("[INFO] Đã hoàn tất kiểm tra toàn bộ mã PIN.");
 
 
             ToogleControl(true);
@@ -79,9 +74,12 @@ namespace BrastelPin
             txtPinFrom.Enabled = enable;
             txtPinTo.Enabled = enable;
             txtTMProxy.Enabled = enable;
+            txtOmniloginURL.Enabled = enable;
+
+            btnDeleteAllProfiles.Enabled = enable;
 
             btnStart.Enabled = enable;
-            btnStart.Enabled = !enable;
+            btnStop.Enabled = !enable;
         }
 
 
@@ -95,7 +93,7 @@ namespace BrastelPin
             {
                 countCheck1Profile = 0;
 
-                if ((firstGetProxy == true)  || ((DateTime.Now - _proxyStartTime).TotalSeconds > 150))
+                if ((firstGetProxy == true) || ((DateTime.Now - _proxyStartTime).TotalSeconds > 150))
                 {
                     firstGetProxy = false;
                     while (true)
@@ -103,13 +101,13 @@ namespace BrastelPin
                         _currentProxy = await GetProxyAsync();
                         if (_currentProxy != null)
                         {
-                            rtbLog.AppendText($"[INFO] Proxy đã lấy: {_currentProxy.data.https}\n");
+                            AddLog($"[INFO] Proxy đã lấy: {_currentProxy.data.https}.");
                             _proxyStartTime = DateTime.Now;
                             break;
                         }
                         else
                         {
-                            rtbLog.AppendText("[ERROR] Lấy proxy thất bại. Thử lại sau 30 giây...\n");
+                            AddLog("[ERROR] Lấy proxy thất bại. Thử lại sau 30 giây...");
                             await Task.Delay(30000);
                         }
                     }
@@ -128,21 +126,21 @@ namespace BrastelPin
 
                 try
                 {
-                    string profileId = await _omniLoginProfileManager.CreateProfileAsync("NewProfile");
+                    string profileId = await _omniLoginProfileManager.CreateProfileAsync("");
                     if (string.IsNullOrEmpty(profileId))
                     {
-                        rtbLog.AppendText($"[ERROR] Không tạo được profile.\n");
+                        AddLog($"[ERROR] Không tạo được profile.");
                         break;
                     }
-                    rtbLog.AppendText($"[INFO] Tạo profile thành công: {profileId}");
+                    AddLog($"[INFO] Tạo profile thành công: {profileId}");
 
-                    int port = await _omniLoginProfileManager.StartProfileAsync(profileId);
+                    int port = await _omniLoginProfileManager.StartProfileAndGetPortAsync(profileId);
                     if (port == 0)
                     {
-                        rtbLog.AppendText($"[ERROR] Không khởi động được profile.\n");
+                        AddLog($"[ERROR] Không khởi động được profile.");
                         break;
                     }
-                    rtbLog.AppendText($"[INFO] Profile đã chạy trên cổng: {port}");
+                    AddLog($"[INFO] Profile đã chạy trên cổng: {port}");
 
                     using (ChromeDriver driver = _omniLoginProfileManager.GetChromeDriverFromPort(port))
                     {
@@ -191,36 +189,58 @@ namespace BrastelPin
                         {
                             Invoke(new Action(() =>
                             {
-                                rtbLog.AppendText($"[CHECKED] PIN {pinStr} sai.\n");
+                                AddLog($"[CHECKED] PIN {pinStr} sai.");
                             }));
                         }
                         else
                         {
                             Invoke(new Action(() =>
                             {
-                                rtbLog.AppendText($"[SUCCESS] Đăng nhập thành công với PIN: {pinStr}\n");
+                                AddLog($"[SUCCESS] Đăng nhập thành công với PIN: {pinStr}.");
                             }));
 
+                            await _omniLoginProfileManager.StopProfileAsync(profileId);
+                            await _omniLoginProfileManager.DeleteProfileAsync(profileId);
                             break;
                         }
 
                         countCheck1Profile++;
                         if (countCheck1Profile < 10)
                         {
-                            goto CHECK_FUNCTION;
-                        }    
+                            bool isEmptyQueue = false;
+                            lock (_queueLock)
+                            {
+                                if (_pinQueue.Count == 0)
+                                {
+                                    isEmptyQueue = true;
+                                }
+                                else
+                                {
+                                    pin = _pinQueue.Dequeue();
+                                }
+                            }
+                            if (isEmptyQueue)
+                            {
+                                await _omniLoginProfileManager.StopProfileAsync(profileId);
+                                await _omniLoginProfileManager.DeleteProfileAsync(profileId);
+                                break;
+                            }
+                            else
+                            {
+                                pinStr = pin.ToString("D4");
+                                goto CHECK_FUNCTION;
+                            }
+                        }
 
+                        await _omniLoginProfileManager.StopProfileAsync(profileId);
+                        await _omniLoginProfileManager.DeleteProfileAsync(profileId);
                     }
-
-                    await _omniLoginProfileManager.StopProfileAsync(profileId);
-                    await _omniLoginProfileManager.DeleteProfileAsync(profileId);
-
                 }
                 catch (Exception ex)
                 {
                     Invoke(new Action(() =>
                     {
-                        rtbLog.AppendText($"[ERROR] {ex.Message}\n");
+                        AddLog($"[ERROR] {ex.Message}.");
                     }));
                 }
             }
@@ -269,6 +289,7 @@ namespace BrastelPin
 
         private void MainForm_Load(object sender, EventArgs e)
         {
+            _omniLoginProfileManager = new OmniLoginProfileManager(_gUIDataModel.OmniloginURL);
 
             _gUIDataModel = GUIDataModel.LoadFromFile();
             txtAccountCode.Text = _gUIDataModel.AccountCode;
@@ -276,8 +297,6 @@ namespace BrastelPin
             txtPinTo.Text = _gUIDataModel.PinTo.ToString();
             txtTMProxy.Text = _gUIDataModel.TMProxy;
             txtOmniloginURL.Text = _gUIDataModel.OmniloginURL;
-
-
 
             txtAccountCode.TextChanged += new EventHandler(TextBoxTextChanged);
             txtPinFrom.TextChanged += new EventHandler(TextBoxTextChanged);
@@ -339,6 +358,49 @@ namespace BrastelPin
             {
                 e.Handled = true;
             }
+        }
+
+
+        private void AddLog(string log)
+        {
+            rtbLog.Invoke(new Action(() =>
+            {
+                rtbLog.AppendText(log + Environment.NewLine);
+            }));
+        }
+
+
+        private async void btnDeleteAllProfiles_Click(object sender, EventArgs e)
+        {
+            bool enableControl = false;
+            txtAccountCode.Enabled = enableControl;
+            txtPinFrom.Enabled = enableControl;
+            txtPinTo.Enabled = enableControl;
+            txtTMProxy.Enabled = enableControl;
+            txtOmniloginURL.Enabled = enableControl;
+            btnDeleteAllProfiles.Enabled = enableControl;
+            btnStart.Enabled = enableControl;
+            btnStop.Enabled = enableControl;
+
+            bool result = await _omniLoginProfileManager.DeleteAllProfilesAsync();
+            if (result)
+            {
+                AddLog("[INFO] Xóa tất cả profiles thành công.");
+            }
+            else
+            {
+                AddLog("[ERROR] Xóa tất cả profiles thất bại.");
+            }
+
+            enableControl = true;
+            txtAccountCode.Enabled = enableControl;
+            txtPinFrom.Enabled = enableControl;
+            txtPinTo.Enabled = enableControl;
+            txtTMProxy.Enabled = enableControl;
+            txtOmniloginURL.Enabled = enableControl;
+            btnDeleteAllProfiles.Enabled = enableControl;
+            btnStart.Enabled = enableControl;
+            btnStop.Enabled = enableControl;
         }
     }
 }
