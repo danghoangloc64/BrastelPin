@@ -43,7 +43,7 @@
             this.txtOmniloginURL = new System.Windows.Forms.TextBox();
             this.btnDeleteAllProfiles = new System.Windows.Forms.Button();
             this.label6 = new System.Windows.Forms.Label();
-            this.txtConcurrentProfiles = new System.Windows.Forms.TextBox();
+            this.txtWorkflowID = new System.Windows.Forms.TextBox();
             this.SuspendLayout();
             // 
             // label1
@@ -183,31 +183,29 @@
             this.label6.AutoSize = true;
             this.label6.Location = new System.Drawing.Point(12, 156);
             this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(99, 13);
+            this.label6.Size = new System.Drawing.Size(69, 13);
             this.label6.TabIndex = 0;
-            this.label6.Text = "Concurrent Profiles:";
+            this.label6.Text = "Workflow ID:";
             // 
-            // txtConcurrentProfiles
+            // txtWorkflowID
             // 
-            this.txtConcurrentProfiles.Location = new System.Drawing.Point(117, 153);
-            this.txtConcurrentProfiles.Name = "txtConcurrentProfiles";
-            this.txtConcurrentProfiles.Size = new System.Drawing.Size(60, 20);
-            this.txtConcurrentProfiles.TabIndex = 8;
-            this.txtConcurrentProfiles.Text = "1";
-            this.txtConcurrentProfiles.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
-            this.txtConcurrentProfiles.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.TextBoxConcurrentProfilesKeyPress);
+            this.txtWorkflowID.Location = new System.Drawing.Point(117, 153);
+            this.txtWorkflowID.Name = "txtWorkflowID";
+            this.txtWorkflowID.Size = new System.Drawing.Size(242, 20);
+            this.txtWorkflowID.TabIndex = 3;
+            this.txtWorkflowID.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
             // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(622, 421);
-            this.Controls.Add(this.txtConcurrentProfiles);
-            this.Controls.Add(this.label6);
             this.Controls.Add(this.btnDeleteAllProfiles);
             this.Controls.Add(this.rtbLog);
             this.Controls.Add(this.btnStop);
             this.Controls.Add(this.btnStart);
+            this.Controls.Add(this.txtWorkflowID);
+            this.Controls.Add(this.label6);
             this.Controls.Add(this.txtOmniloginURL);
             this.Controls.Add(this.label5);
             this.Controls.Add(this.txtTMProxy);
@@ -245,7 +243,7 @@
         private System.Windows.Forms.TextBox txtOmniloginURL;
         private System.Windows.Forms.Button btnDeleteAllProfiles;
         private System.Windows.Forms.Label label6;
-        private System.Windows.Forms.TextBox txtConcurrentProfiles;
+        private System.Windows.Forms.TextBox txtWorkflowID;
     }
 }
 

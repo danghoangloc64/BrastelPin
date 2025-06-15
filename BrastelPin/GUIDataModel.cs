@@ -14,7 +14,8 @@ namespace BrastelPin
         public int PinTo { get; set; }
         public string TMProxy { get; set; } // Multi-line text containing proxy keys
         public string OmniloginURL { get; set; }
-        public int ConcurrentProfiles { get; set; }
+        public string WorkflowID { get; set; }
+        public int ConcurrentProfiles { get; set; } = 1;
 
         [JsonIgnore]
         public List<string> TMProxyKeys
@@ -37,8 +38,8 @@ namespace BrastelPin
             PinFrom = 0;
             PinTo = 0;
             TMProxy = string.Empty;
-            OmniloginURL = "http://localhost:35353/";
-            ConcurrentProfiles = 1;
+            OmniloginURL = "localhost:35353/";
+            WorkflowID = string.Empty;
         }
 
         public void SaveToFile()
@@ -58,11 +59,7 @@ namespace BrastelPin
             {
                 string json = File.ReadAllText(GUI_DATA_FILE_PATH);
                 var model = JsonConvert.DeserializeObject<GUIDataModel>(json) ?? new GUIDataModel();
-                
-                // Ensure ConcurrentProfiles has a valid default value
-                if (model.ConcurrentProfiles <= 0)
-                    model.ConcurrentProfiles = 1;
-                    
+
                 return model;
             }
             catch
@@ -77,7 +74,7 @@ namespace BrastelPin
         public bool ValidateConcurrentProfiles(out string errorMessage)
         {
             var proxyKeys = TMProxyKeys;
-            
+
             if (proxyKeys.Count == 0)
             {
                 errorMessage = "No proxy keys provided. Please add at least one proxy key.";

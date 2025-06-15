@@ -90,6 +90,7 @@
       <DependentUpon>MainForm.cs</DependentUpon>
     </Compile>
     <Compile Include="OmniLoginManager.cs" />
+    <Compile Include="OmniloginProfileData.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TMProxyModel.cs" />
