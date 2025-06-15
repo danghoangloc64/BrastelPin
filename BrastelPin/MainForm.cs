@@ -127,13 +127,11 @@ namespace BrastelPin
 
         private void ToogleControl(bool enable)
         {
-            txtAccountCode.Enabled = enable;
             txtPinFrom.Enabled = enable;
             txtPinTo.Enabled = enable;
             txtTMProxy.Enabled = enable;
             txtOmniloginURL.Enabled = enable;
             txtWorkflowID.Enabled = enable;
-            btnDeleteAllProfiles.Enabled = enable;
             btnStart.Enabled = enable;
             btnStop.Enabled = !enable;
 
@@ -220,7 +218,7 @@ namespace BrastelPin
 
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    if ((DateTime.Now - currentProxyInfo.StartTime).TotalSeconds > 121)
+                    if ((DateTime.Now - currentProxyInfo.StartTime).TotalSeconds > 241)
                     {
                         try
                         {
@@ -629,7 +627,6 @@ namespace BrastelPin
             AddLog($"[INFO] OmniLogin manager initialized with URL: {_gUIDataModel.OmniloginURL}");
 
             // Load UI values
-            txtAccountCode.Text = _gUIDataModel.AccountCode;
             txtPinFrom.Text = _gUIDataModel.PinFrom.ToString();
             txtPinTo.Text = _gUIDataModel.PinTo.ToString();
             txtTMProxy.Text = _gUIDataModel.TMProxy;
@@ -637,7 +634,6 @@ namespace BrastelPin
             txtWorkflowID.Text = _gUIDataModel.WorkflowID.ToString();
 
             // Setup event handlers
-            txtAccountCode.TextChanged += new EventHandler(TextBoxTextChanged);
             txtPinFrom.TextChanged += new EventHandler(TextBoxTextChanged);
             txtTMProxy.TextChanged += new EventHandler(TextBoxTextChanged);
             txtPinTo.TextChanged += new EventHandler(TextBoxTextChanged);
@@ -657,7 +653,6 @@ namespace BrastelPin
         {
             try
             {
-                _gUIDataModel.AccountCode = txtAccountCode.Text;
                 _gUIDataModel.PinFrom = int.Parse(txtPinFrom.Text);
                 _gUIDataModel.PinTo = int.Parse(txtPinTo.Text);
                 _gUIDataModel.TMProxy = txtTMProxy.Text;
@@ -753,13 +748,11 @@ namespace BrastelPin
             AddLog("[INFO] Starting to delete all profiles...");
 
             bool enableControl = false;
-            txtAccountCode.Enabled = enableControl;
             txtPinFrom.Enabled = enableControl;
             txtPinTo.Enabled = enableControl;
             txtTMProxy.Enabled = enableControl;
             txtOmniloginURL.Enabled = enableControl;
             txtWorkflowID.Enabled = enableControl;
-            btnDeleteAllProfiles.Enabled = enableControl;
             btnStart.Enabled = enableControl;
             btnStop.Enabled = enableControl;
 
@@ -781,13 +774,11 @@ namespace BrastelPin
             }
 
             enableControl = true;
-            txtAccountCode.Enabled = enableControl;
             txtPinFrom.Enabled = enableControl;
             txtPinTo.Enabled = enableControl;
             txtTMProxy.Enabled = enableControl;
             txtOmniloginURL.Enabled = enableControl;
             txtWorkflowID.Enabled = enableControl;
-            btnDeleteAllProfiles.Enabled = enableControl;
             btnStart.Enabled = enableControl;
             btnStop.Enabled = enableControl;
 

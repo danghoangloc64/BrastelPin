@@ -28,8 +28,6 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.label1 = new System.Windows.Forms.Label();
-            this.txtAccountCode = new System.Windows.Forms.TextBox();
             this.label2 = new System.Windows.Forms.Label();
             this.txtPinFrom = new System.Windows.Forms.TextBox();
             this.label3 = new System.Windows.Forms.Label();
@@ -41,32 +39,14 @@
             this.rtbLog = new System.Windows.Forms.RichTextBox();
             this.label5 = new System.Windows.Forms.Label();
             this.txtOmniloginURL = new System.Windows.Forms.TextBox();
-            this.btnDeleteAllProfiles = new System.Windows.Forms.Button();
             this.label6 = new System.Windows.Forms.Label();
             this.txtWorkflowID = new System.Windows.Forms.TextBox();
             this.SuspendLayout();
             // 
-            // label1
-            // 
-            this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(12, 13);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(78, 13);
-            this.label1.TabIndex = 0;
-            this.label1.Text = "Account Code:";
-            // 
-            // txtAccountCode
-            // 
-            this.txtAccountCode.Location = new System.Drawing.Point(117, 9);
-            this.txtAccountCode.Name = "txtAccountCode";
-            this.txtAccountCode.Size = new System.Drawing.Size(242, 20);
-            this.txtAccountCode.TabIndex = 0;
-            this.txtAccountCode.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
-            // 
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(12, 39);
+            this.label2.Location = new System.Drawing.Point(12, 15);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(54, 13);
             this.label2.TabIndex = 0;
@@ -74,7 +54,7 @@
             // 
             // txtPinFrom
             // 
-            this.txtPinFrom.Location = new System.Drawing.Point(117, 35);
+            this.txtPinFrom.Location = new System.Drawing.Point(117, 11);
             this.txtPinFrom.Name = "txtPinFrom";
             this.txtPinFrom.Size = new System.Drawing.Size(106, 20);
             this.txtPinFrom.TabIndex = 1;
@@ -84,7 +64,7 @@
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(12, 65);
+            this.label3.Location = new System.Drawing.Point(12, 41);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(78, 13);
             this.label3.TabIndex = 0;
@@ -92,7 +72,7 @@
             // 
             // txtTMProxy
             // 
-            this.txtTMProxy.Location = new System.Drawing.Point(117, 61);
+            this.txtTMProxy.Location = new System.Drawing.Point(117, 37);
             this.txtTMProxy.Multiline = true;
             this.txtTMProxy.Name = "txtTMProxy";
             this.txtTMProxy.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
@@ -102,7 +82,7 @@
             // label4
             // 
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(229, 39);
+            this.label4.Location = new System.Drawing.Point(229, 15);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(20, 13);
             this.label4.TabIndex = 0;
@@ -110,7 +90,7 @@
             // 
             // txtPinTo
             // 
-            this.txtPinTo.Location = new System.Drawing.Point(255, 35);
+            this.txtPinTo.Location = new System.Drawing.Point(255, 11);
             this.txtPinTo.Name = "txtPinTo";
             this.txtPinTo.Size = new System.Drawing.Size(104, 20);
             this.txtPinTo.TabIndex = 2;
@@ -140,10 +120,10 @@
             // 
             // rtbLog
             // 
-            this.rtbLog.Location = new System.Drawing.Point(12, 181);
+            this.rtbLog.Location = new System.Drawing.Point(12, 155);
             this.rtbLog.Name = "rtbLog";
             this.rtbLog.ReadOnly = true;
-            this.rtbLog.Size = new System.Drawing.Size(598, 200);
+            this.rtbLog.Size = new System.Drawing.Size(598, 254);
             this.rtbLog.TabIndex = 6;
             this.rtbLog.Text = "";
             this.rtbLog.TextChanged += new System.EventHandler(this.rtbLog_TextChanged);
@@ -151,7 +131,7 @@
             // label5
             // 
             this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(12, 130);
+            this.label5.Location = new System.Drawing.Point(12, 106);
             this.label5.Name = "label5";
             this.label5.Size = new System.Drawing.Size(81, 13);
             this.label5.TabIndex = 0;
@@ -159,29 +139,16 @@
             // 
             // txtOmniloginURL
             // 
-            this.txtOmniloginURL.Location = new System.Drawing.Point(117, 127);
+            this.txtOmniloginURL.Location = new System.Drawing.Point(117, 103);
             this.txtOmniloginURL.Name = "txtOmniloginURL";
             this.txtOmniloginURL.Size = new System.Drawing.Size(242, 20);
             this.txtOmniloginURL.TabIndex = 3;
             this.txtOmniloginURL.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
             // 
-            // btnDeleteAllProfiles
-            // 
-            this.btnDeleteAllProfiles.BackColor = System.Drawing.Color.Red;
-            this.btnDeleteAllProfiles.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnDeleteAllProfiles.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
-            this.btnDeleteAllProfiles.Location = new System.Drawing.Point(12, 387);
-            this.btnDeleteAllProfiles.Name = "btnDeleteAllProfiles";
-            this.btnDeleteAllProfiles.Size = new System.Drawing.Size(598, 23);
-            this.btnDeleteAllProfiles.TabIndex = 7;
-            this.btnDeleteAllProfiles.Text = "Nhấn để xóa hết profile, để bắt đầu chạy lại từ đầu";
-            this.btnDeleteAllProfiles.UseVisualStyleBackColor = false;
-            this.btnDeleteAllProfiles.Click += new System.EventHandler(this.btnDeleteAllProfiles_Click);
-            // 
             // label6
             // 
             this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(12, 156);
+            this.label6.Location = new System.Drawing.Point(12, 132);
             this.label6.Name = "label6";
             this.label6.Size = new System.Drawing.Size(69, 13);
             this.label6.TabIndex = 0;
@@ -189,7 +156,7 @@
             // 
             // txtWorkflowID
             // 
-            this.txtWorkflowID.Location = new System.Drawing.Point(117, 153);
+            this.txtWorkflowID.Location = new System.Drawing.Point(117, 129);
             this.txtWorkflowID.Name = "txtWorkflowID";
             this.txtWorkflowID.Size = new System.Drawing.Size(242, 20);
             this.txtWorkflowID.TabIndex = 3;
@@ -200,7 +167,6 @@
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(622, 421);
-            this.Controls.Add(this.btnDeleteAllProfiles);
             this.Controls.Add(this.rtbLog);
             this.Controls.Add(this.btnStop);
             this.Controls.Add(this.btnStart);
@@ -214,8 +180,6 @@
             this.Controls.Add(this.label4);
             this.Controls.Add(this.txtPinFrom);
             this.Controls.Add(this.label2);
-            this.Controls.Add(this.txtAccountCode);
-            this.Controls.Add(this.label1);
             this.MaximizeBox = false;
             this.Name = "MainForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
@@ -227,9 +191,6 @@
         }
 
         #endregion
-
-        private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.TextBox txtAccountCode;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.TextBox txtPinFrom;
         private System.Windows.Forms.Label label3;
@@ -241,7 +202,6 @@
         private System.Windows.Forms.RichTextBox rtbLog;
         private System.Windows.Forms.Label label5;
         private System.Windows.Forms.TextBox txtOmniloginURL;
-        private System.Windows.Forms.Button btnDeleteAllProfiles;
         private System.Windows.Forms.Label label6;
         private System.Windows.Forms.TextBox txtWorkflowID;
     }
