@@ -294,6 +294,104 @@
             color: #721c24;
         }
 
+        /* Job Management Styles */
+        .job-item {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 2px solid #e9ecef;
+            position: relative;
+        }
+
+        .job-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .job-id {
+            font-weight: 600;
+            color: #2c3e50;
+            font-family: 'Courier New', monospace;
+        }
+
+        .job-status {
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-running {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .status-completed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-interrupted {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .job-details {
+            font-size: 14px;
+            color: #6c757d;
+            margin-bottom: 15px;
+        }
+
+        .job-details strong {
+            color: #495057;
+        }
+
+        .btn-resume {
+            background: #ffc107;
+            color: #212529;
+            font-size: 12px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .btn-resume:hover {
+            background: #e0a800;
+        }
+
+        .restored-badge {
+            background: #6f42c1;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            margin-left: 10px;
+        }
+
+        .job-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .no-jobs {
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+            padding: 20px;
+        }
+
         .footer {
             background: #2c3e50;
             color: white;
@@ -332,9 +430,18 @@
         </div>
 
         <div class="main-content">
+            <!-- Job Management Section -->
+            <div id="jobsSection" class="section">
+                <h2><i class="fas fa-tasks"></i> Job Management</h2>
+                <div id="jobsList"></div>
+                <button type="button" class="btn btn-secondary" onclick="refreshJobs()" style="margin-top: 10px;">
+                    <i class="fas fa-sync"></i> Refresh Jobs
+                </button>
+            </div>
+
             <!-- Status Section -->
             <div id="statusSection" class="section status-section">
-                <h2><i class="fas fa-chart-line"></i> Job Status</h2>
+                <h2><i class="fas fa-chart-line"></i> Current Job Status</h2>
                 <div id="jobStatus"></div>
             </div>
 
@@ -362,7 +469,7 @@
                         </div>
                         <div class="form-group">
                             <label>Access Code:</label>
-                            <input type="text" class="form-control access-code-input" placeholder="Enter access code (e.g., 74974423)" value="74974423">
+                            <input type="text" class="form-control access-code-input" placeholder="Enter access code (e.g., 74974423)">
                         </div>
                         <div class="pin-range">
                             <div class="form-group">
@@ -395,7 +502,7 @@
                     </div>
                 </div>
                 <div class="checkbox-group">
-                    <input type="checkbox" id="randomProcessing">
+                    <input type="checkbox" id="randomProcessing" checked>
                     <label for="randomProcessing">Enable Random Processing (Shuffle Mode)</label>
                 </div>
             </div>
@@ -657,6 +764,7 @@ ASPSESSIONIDCQDCDADQ=FMMPDBIDMJCOKDIBPHJPDCOP; AWSELB=1BB79F7B04C9CBC0EF6C78B167
                     showLogsSection();
                     startStatusPolling();
                     startLogsPolling();
+                    refreshJobs(); // Refresh job list after starting new job
 
                     // Update button
                     startBtn.innerHTML = '<i class="fas fa-stop"></i> Running... (Check Console for Details)';
@@ -752,6 +860,8 @@ ASPSESSIONIDCQDCDADQ=FMMPDBIDMJCOKDIBPHJPDCOP; AWSELB=1BB79F7B04C9CBC0EF6C78B167
                     } else if (job.status === 'error') {
                         showAlert(`PIN checking failed: ${job.error}`, 'error');
                     }
+
+                    refreshJobs(); // Refresh job list when job status changes
                 }
 
             } catch (error) {
@@ -806,9 +916,95 @@ ASPSESSIONIDCQDCDADQ=FMMPDBIDMJCOKDIBPHJPDCOP; AWSELB=1BB79F7B04C9CBC0EF6C78B167
             }
         }
 
+        // Job Management Functions
+        async function refreshJobs() {
+            try {
+                const response = await fetch('/api/jobs');
+                const jobs = await response.json();
+
+                const jobsList = document.getElementById('jobsList');
+
+                if (jobs.length === 0) {
+                    jobsList.innerHTML = '<div class="no-jobs">No jobs found</div>';
+                    return;
+                }
+
+                const jobsHTML = jobs.map(job => {
+                    const statusClass = `status-${job.status}`;
+                    const canResumeBtn = job.canResume ?
+                        `<button class="btn-resume" onclick="resumeJob('${job.jobId}')">
+                            <i class="fas fa-play"></i> Resume
+                        </button>` : '';
+
+                    const restoredBadge = job.wasRestored ?
+                        '<span class="restored-badge">RESTORED</span>' : '';
+
+                    return `
+                        <div class="job-item">
+                            <div class="job-header">
+                                <div>
+                                    <span class="job-id">Job ${job.jobId}</span>
+                                    ${restoredBadge}
+                                </div>
+                                <span class="job-status ${statusClass}">${job.status}</span>
+                            </div>
+                            <div class="job-details">
+                                <div><strong>Started:</strong> ${new Date(job.startTime).toLocaleString()}</div>
+                                ${job.resumedAt ? `<div><strong>Resumed:</strong> ${new Date(job.resumedAt).toLocaleString()}</div>` : ''}
+                                ${job.endTime ? `<div><strong>Ended:</strong> ${new Date(job.endTime).toLocaleString()}</div>` : ''}
+                                ${job.error ? `<div><strong>Error:</strong> <span style="color: #dc3545;">${job.error}</span></div>` : ''}
+                            </div>
+                            <div class="job-actions">
+                                ${canResumeBtn}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                jobsList.innerHTML = jobsHTML;
+
+            } catch (error) {
+                console.error('Error fetching jobs:', error);
+                showAlert('Error loading jobs', 'error');
+            }
+        }
+
+        async function resumeJob(jobId) {
+            try {
+                const response = await fetch(`/api/resume-job/${jobId}`, {
+                    method: 'POST'
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert(`Job ${jobId} resumed successfully!`, 'success');
+                    currentJobId = jobId;
+
+                    // Update UI
+                    const startBtn = document.getElementById('startBtn');
+                    startBtn.disabled = true;
+                    startBtn.innerHTML = '<i class="fas fa-stop"></i> Running... (Job Resumed)';
+
+                    showStatusSection();
+                    showLogsSection();
+                    startStatusPolling();
+                    startLogsPolling();
+                    refreshJobs();
+                } else {
+                    throw new Error(result.error || 'Failed to resume job');
+                }
+
+            } catch (error) {
+                console.error('Error resuming job:', error);
+                showAlert(`Error resuming job: ${error.message}`, 'error');
+            }
+        }
+
         // Initialize the form
         document.addEventListener('DOMContentLoaded', function() {
             updateRemoveButtons();
+            refreshJobs(); // Load existing jobs on page load
         });
     </script>
 </body>

@@ -1,134 +1,45 @@
-[2025-06-17T03:44:25.914Z] 🔍 [82819563] Created accessCode folder: Data\82819563
-[2025-06-17T03:44:25.918Z] 🔍 [82819563] Created tracking file for 82819563: Data\82819563\sent_pins_history.json
-[2025-06-17T03:44:25.919Z] 🔍 [82819563] Created tracking file for 82819563: Data\82819563\blacklist_pins.json
-[2025-06-17T03:44:25.921Z] 🔍 [82819563] Created tracking file for 82819563: Data\82819563\valid_pins_found.json
-[2025-06-17T03:44:25.922Z] 🔍 [82819563] Starting PIN Checker for AccessCode: 82819563
-[2025-06-17T03:44:25.923Z] 🔍 [82819563] PIN Range: 9995 - 9999
-[2025-06-17T03:44:25.924Z] 🔍 [82819563] Concurrent Workers: 1
-[2025-06-17T03:44:25.925Z] 🔍 [82819563] === STATISTICS ===
-[2025-06-17T03:44:25.926Z] 🔍 [82819563] Access Code: 82819563
-[2025-06-17T03:44:25.931Z] 🔍 [82819563] PIN Range: 9995 - 9999
-[2025-06-17T03:44:25.932Z] 🔍 [82819563] Total PINs sent: 0
-[2025-06-17T03:44:25.932Z] 🔍 [82819563] Blacklisted PINs: 0
-[2025-06-17T03:44:25.933Z] 🔍 [82819563] Valid PINs found: 0
-[2025-06-17T03:44:25.934Z] 🔍 [82819563] Files location:
-[2025-06-17T03:44:25.934Z] 🔍 [82819563] - Sent PINs: Data\82819563\sent_pins_history.json
-[2025-06-17T03:44:25.935Z] 🔍 [82819563] - Blacklist: Data\82819563\blacklist_pins.json
-[2025-06-17T03:44:25.935Z] 🔍 [82819563] - Valid PINs: Data\82819563\valid_pins_found.json
-[2025-06-17T03:44:31.813Z] 🔍 [82819563] Worker 1 - PIN: 9995 | Result: 100 - SPC number not found
-[2025-06-17T03:44:36.864Z] 🔍 [82819563] Worker 1 - PIN: 9996 | Result: 100 - SPC number not found
-[2025-06-17T03:44:43.334Z] 🔍 [82819563] Worker 1 - PIN: 9997 | Result: 100 - SPC number not found
-[2025-06-17T03:44:48.601Z] 🔍 [82819563] Worker 1 - PIN: 9998 | Result: 100 - SPC number not found
-[2025-06-17T03:44:53.267Z] 🔍 [82819563] Worker 1 - PIN: 9999 | Result: 0 - Successfully retrieved
-[2025-06-17T03:44:53.269Z] 🎯 [82819563] Worker 1 - FOUND VALID PIN: 9999 (82819563)
-[2025-06-17T03:44:53.271Z] 🎯 [82819563] Saved valid PIN for 82819563 to file: 9999
-[2025-06-17T03:44:53.272Z] ✅ [82819563] Completed processing accessCode: 82819563
-[2025-06-17T03:44:53.273Z] 🔍 [82819563] === STATISTICS ===
-[2025-06-17T03:44:53.273Z] 🔍 [82819563] Access Code: 82819563
-[2025-06-17T03:44:53.275Z] 🔍 [82819563] PIN Range: 9995 - 9999
-[2025-06-17T03:44:53.275Z] 🔍 [82819563] Total PINs sent: 5
-[2025-06-17T03:44:53.276Z] 🔍 [82819563] Blacklisted PINs: 0
-[2025-06-17T03:44:53.277Z] 🔍 [82819563] Valid PINs found: 1
-[2025-06-17T03:44:53.277Z] ✅ [82819563] Valid PINs: 9999
-[2025-06-17T03:44:53.278Z] 🔍 [82819563] Files location:
-[2025-06-17T03:44:53.279Z] 🔍 [82819563] - Sent PINs: Data\82819563\sent_pins_history.json
-[2025-06-17T03:44:53.279Z] 🔍 [82819563] - Blacklist: Data\82819563\blacklist_pins.json
-[2025-06-17T03:44:53.280Z] 🔍 [82819563] - Valid PINs: Data\82819563\valid_pins_found.json
-[2025-06-17T03:48:33.133Z] 🔍 [82819563] Starting PIN Checker for AccessCode: 82819563
-[2025-06-17T03:48:33.134Z] 🔍 [82819563] PIN Range: 9995 - 9999
-[2025-06-17T03:48:33.149Z] 🔍 [82819563] Concurrent Workers: 1
-[2025-06-17T03:48:33.161Z] 🔍 [82819563] === STATISTICS ===
-[2025-06-17T03:48:33.169Z] 🔍 [82819563] Access Code: 82819563
-[2025-06-17T03:48:33.170Z] 🔍 [82819563] PIN Range: 9995 - 9999
-[2025-06-17T03:48:33.170Z] 🔍 [82819563] Total PINs sent: 5
-[2025-06-17T03:48:33.170Z] 🔍 [82819563] Blacklisted PINs: 0
-[2025-06-17T03:48:33.171Z] 🔍 [82819563] Valid PINs found: 1
-[2025-06-17T03:48:33.171Z] ✅ [82819563] Valid PINs: 9999
-[2025-06-17T03:48:33.172Z] 🔍 [82819563] Files location:
-[2025-06-17T03:48:33.172Z] 🔍 [82819563] - Sent PINs: Data\82819563\sent_pins_history.json
-[2025-06-17T03:48:33.173Z] 🔍 [82819563] - Blacklist: Data\82819563\blacklist_pins.json
-[2025-06-17T03:48:33.174Z] 🔍 [82819563] - Valid PINs: Data\82819563\valid_pins_found.json
-[2025-06-17T03:48:33.175Z] ⏭️ [82819563] Worker 1 - Skipping already sent PIN: 9995
-[2025-06-17T03:48:33.175Z] ⏭️ [82819563] Worker 1 - Skipping already sent PIN: 9996
-[2025-06-17T03:48:33.176Z] ⏭️ [82819563] Worker 1 - Skipping already sent PIN: 9997
-[2025-06-17T03:48:33.177Z] ⏭️ [82819563] Worker 1 - Skipping already sent PIN: 9998
-[2025-06-17T03:48:33.177Z] ⏭️ [82819563] Worker 1 - Skipping already sent PIN: 9999
-[2025-06-17T03:48:33.178Z] ✅ [82819563] Completed processing accessCode: 82819563
-[2025-06-17T03:48:33.184Z] 🔍 [82819563] === STATISTICS ===
-[2025-06-17T03:48:33.185Z] 🔍 [82819563] Access Code: 82819563
-[2025-06-17T03:48:33.186Z] 🔍 [82819563] PIN Range: 9995 - 9999
-[2025-06-17T03:48:33.186Z] 🔍 [82819563] Total PINs sent: 5
-[2025-06-17T03:48:33.187Z] 🔍 [82819563] Blacklisted PINs: 0
-[2025-06-17T03:48:33.187Z] 🔍 [82819563] Valid PINs found: 1
-[2025-06-17T03:48:33.187Z] ✅ [82819563] Valid PINs: 9999
-[2025-06-17T03:48:33.188Z] 🔍 [82819563] Files location:
-[2025-06-17T03:48:33.188Z] 🔍 [82819563] - Sent PINs: Data\82819563\sent_pins_history.json
-[2025-06-17T03:48:33.188Z] 🔍 [82819563] - Blacklist: Data\82819563\blacklist_pins.json
-[2025-06-17T03:48:33.189Z] 🔍 [82819563] - Valid PINs: Data\82819563\valid_pins_found.json
-[2025-06-17T04:09:58.972Z] 🔍 [82819563] Created accessCode folder: Data\82819563
-[2025-06-17T04:09:58.975Z] 🔍 [82819563] Created tracking file for 82819563: Data\82819563\sent_pins_history.json
-[2025-06-17T04:09:58.986Z] 🔍 [82819563] Created tracking file for 82819563: Data\82819563\blacklist_pins.json
-[2025-06-17T04:09:58.987Z] 🔍 [82819563] Created tracking file for 82819563: Data\82819563\valid_pins_found.json
-[2025-06-17T04:09:58.988Z] 🔍 [82819563] Starting PIN Checker for AccessCode: 82819563
-[2025-06-17T04:09:58.988Z] 🔍 [82819563] PIN Range: 9995 - 9999
-[2025-06-17T04:09:58.989Z] 🔍 [82819563] Concurrent Workers: 1
-[2025-06-17T04:09:58.989Z] 🔍 [82819563] === STATISTICS ===
-[2025-06-17T04:09:58.990Z] 🔍 [82819563] Access Code: 82819563
-[2025-06-17T04:09:58.990Z] 🔍 [82819563] PIN Range: 9995 - 9999
-[2025-06-17T04:09:58.991Z] 🔍 [82819563] Total PINs sent: 0
-[2025-06-17T04:09:58.991Z] 🔍 [82819563] Blacklisted PINs: 0
-[2025-06-17T04:09:58.992Z] 🔍 [82819563] Valid PINs found: 0
-[2025-06-17T04:09:58.992Z] 🔍 [82819563] Files location:
-[2025-06-17T04:09:58.992Z] 🔍 [82819563] - Sent PINs: Data\82819563\sent_pins_history.json
-[2025-06-17T04:09:58.993Z] 🔍 [82819563] - Blacklist: Data\82819563\blacklist_pins.json
-[2025-06-17T04:09:58.993Z] 🔍 [82819563] - Valid PINs: Data\82819563\valid_pins_found.json
-[2025-06-17T04:10:05.218Z] 🔍 [82819563] Worker 1 - PIN: 9995 | Result: 100 - SPC number not found
-[2025-06-17T04:10:12.063Z] 🔍 [82819563] Worker 1 - PIN: 9996 | Result: 100 - SPC number not found
-[2025-06-17T04:10:17.255Z] 🔍 [82819563] Worker 1 - PIN: 9997 | Result: 100 - SPC number not found
-[2025-06-17T04:10:24.424Z] 🔍 [82819563] Worker 1 - PIN: 9998 | Result: 100 - SPC number not found
-[2025-06-17T04:10:28.666Z] 🔍 [82819563] Worker 1 - PIN: 9999 | Result: 0 - Successfully retrieved
-[2025-06-17T04:10:28.667Z] 🎯 [82819563] Worker 1 - FOUND VALID PIN: 9999 (82819563)
-[2025-06-17T04:10:28.679Z] 🎯 [82819563] Saved valid PIN for 82819563 to file: 9999
-[2025-06-17T04:10:28.680Z] ✅ [82819563] Completed processing accessCode: 82819563
-[2025-06-17T04:10:28.681Z] 🔍 [82819563] === STATISTICS ===
-[2025-06-17T04:10:28.682Z] 🔍 [82819563] Access Code: 82819563
-[2025-06-17T04:10:28.683Z] 🔍 [82819563] PIN Range: 9995 - 9999
-[2025-06-17T04:10:28.683Z] 🔍 [82819563] Total PINs sent: 5
-[2025-06-17T04:10:28.684Z] 🔍 [82819563] Blacklisted PINs: 0
-[2025-06-17T04:10:28.685Z] 🔍 [82819563] Valid PINs found: 1
-[2025-06-17T04:10:28.685Z] ✅ [82819563] Valid PINs: 9999
-[2025-06-17T04:10:28.686Z] 🔍 [82819563] Files location:
-[2025-06-17T04:10:28.686Z] 🔍 [82819563] - Sent PINs: Data\82819563\sent_pins_history.json
-[2025-06-17T04:10:28.687Z] 🔍 [82819563] - Blacklist: Data\82819563\blacklist_pins.json
-[2025-06-17T04:10:28.688Z] 🔍 [82819563] - Valid PINs: Data\82819563\valid_pins_found.json
-[2025-06-17T04:12:58.673Z] 🔍 [82819563] Starting PIN Checker for AccessCode: 82819563
-[2025-06-17T04:12:58.674Z] 🔍 [82819563] PIN Range: 9995 - 9999
-[2025-06-17T04:12:58.684Z] 🔍 [82819563] Concurrent Workers: 1
-[2025-06-17T04:12:58.694Z] 🔍 [82819563] === STATISTICS ===
-[2025-06-17T04:12:58.705Z] 🔍 [82819563] Access Code: 82819563
-[2025-06-17T04:12:58.706Z] 🔍 [82819563] PIN Range: 9995 - 9999
-[2025-06-17T04:12:58.707Z] 🔍 [82819563] Total PINs sent: 5
-[2025-06-17T04:12:58.707Z] 🔍 [82819563] Blacklisted PINs: 0
-[2025-06-17T04:12:58.707Z] 🔍 [82819563] Valid PINs found: 1
-[2025-06-17T04:12:58.708Z] ✅ [82819563] Valid PINs: 9999
-[2025-06-17T04:12:58.708Z] 🔍 [82819563] Files location:
-[2025-06-17T04:12:58.708Z] 🔍 [82819563] - Sent PINs: Data\82819563\sent_pins_history.json
-[2025-06-17T04:12:58.709Z] 🔍 [82819563] - Blacklist: Data\82819563\blacklist_pins.json
-[2025-06-17T04:12:58.710Z] 🔍 [82819563] - Valid PINs: Data\82819563\valid_pins_found.json
-[2025-06-17T04:12:58.711Z] ⏭️ [82819563] Worker 1 - Skipping already sent PIN: 9995
-[2025-06-17T04:12:58.712Z] ⏭️ [82819563] Worker 1 - Skipping already sent PIN: 9996
-[2025-06-17T04:12:58.712Z] ⏭️ [82819563] Worker 1 - Skipping already sent PIN: 9997
-[2025-06-17T04:12:58.712Z] ⏭️ [82819563] Worker 1 - Skipping already sent PIN: 9998
-[2025-06-17T04:12:58.712Z] ⏭️ [82819563] Worker 1 - Skipping already sent PIN: 9999
-[2025-06-17T04:12:58.713Z] ✅ [82819563] Completed processing accessCode: 82819563
-[2025-06-17T04:12:58.714Z] 🔍 [82819563] === STATISTICS ===
-[2025-06-17T04:12:58.714Z] 🔍 [82819563] Access Code: 82819563
-[2025-06-17T04:12:58.714Z] 🔍 [82819563] PIN Range: 9995 - 9999
-[2025-06-17T04:12:58.715Z] 🔍 [82819563] Total PINs sent: 5
-[2025-06-17T04:12:58.715Z] 🔍 [82819563] Blacklisted PINs: 0
-[2025-06-17T04:12:58.715Z] 🔍 [82819563] Valid PINs found: 1
-[2025-06-17T04:12:58.716Z] ✅ [82819563] Valid PINs: 9999
-[2025-06-17T04:12:58.716Z] 🔍 [82819563] Files location:
-[2025-06-17T04:12:58.716Z] 🔍 [82819563] - Sent PINs: Data\82819563\sent_pins_history.json
-[2025-06-17T04:12:58.717Z] 🔍 [82819563] - Blacklist: Data\82819563\blacklist_pins.json
-[2025-06-17T04:12:58.717Z] 🔍 [82819563] - Valid PINs: Data\82819563\valid_pins_found.json
+[2025-06-17T07:02:54.118Z] 🔍 [82819563] Created accessCode folder: Data\82819563
+[2025-06-17T07:02:54.119Z] 🔍 [82819563] Created tracking file for 82819563: Data\82819563\sent_pins_history.json
+[2025-06-17T07:02:54.120Z] 🔍 [82819563] Created tracking file for 82819563: Data\82819563\blacklist_pins.json
+[2025-06-17T07:02:54.122Z] 🔍 [82819563] Created tracking file for 82819563: Data\82819563\valid_pins_found.json
+[2025-06-17T07:02:54.123Z] 🔍 [82819563] Starting PIN Checker for AccessCode: 82819563
+[2025-06-17T07:02:54.124Z] 🔍 [82819563] PIN Range: 9990 - 9999
+[2025-06-17T07:02:54.124Z] 🔍 [82819563] Concurrent Workers: 1
+[2025-06-17T07:02:54.125Z] 🔍 [82819563] === STATISTICS ===
+[2025-06-17T07:02:54.126Z] 🔍 [82819563] Access Code: 82819563
+[2025-06-17T07:02:54.131Z] 🔍 [82819563] PIN Range: 9990 - 9999
+[2025-06-17T07:02:54.132Z] 🔍 [82819563] Total PINs sent: 0
+[2025-06-17T07:02:54.132Z] 🔍 [82819563] Blacklisted PINs: 0
+[2025-06-17T07:02:54.133Z] 🔍 [82819563] Valid PINs found: 0
+[2025-06-17T07:02:54.133Z] 🔍 [82819563] Valid PINs (not blacklisted): 0
+[2025-06-17T07:02:54.134Z] 🔍 [82819563] Files location:
+[2025-06-17T07:02:54.135Z] 🔍 [82819563] - Sent PINs: Data\82819563\sent_pins_history.json
+[2025-06-17T07:02:54.135Z] 🔍 [82819563] - Blacklist: Data\82819563\blacklist_pins.json
+[2025-06-17T07:02:54.136Z] 🔍 [82819563] - Valid PINs: Data\82819563\valid_pins_found.json
+[2025-06-17T07:02:54.137Z] 🔍 [82819563] Worker 1 - Total unsent PINs available: 10
+[2025-06-17T07:02:54.138Z] 🔍 [82819563] Worker 1 - Using random shuffle processing mode
+[2025-06-17T07:02:54.138Z] 🔍 [82819563] Worker 1 - Processing 10 PINs in random order
+[2025-06-17T07:03:01.043Z] 🔍 [82819563] Worker 1 - PIN: 9998 | Result: 100 - SPC number not found | Progress: 1/10
+[2025-06-17T07:03:07.193Z] 🔍 [82819563] Worker 1 - PIN: 9995 | Result: 100 - SPC number not found | Progress: 2/10
+[2025-06-17T07:03:14.044Z] 🔍 [82819563] Worker 1 - PIN: 9990 | Result: 100 - SPC number not found | Progress: 3/10
+[2025-06-17T07:03:20.055Z] 🔍 [82819563] Worker 1 - PIN: 9991 | Result: 100 - SPC number not found | Progress: 4/10
+[2025-06-17T07:03:26.821Z] 🔍 [82819563] Worker 1 - PIN: 9992 | Result: 100 - SPC number not found | Progress: 5/10
+[2025-06-17T07:03:35.842Z] 🔍 [82819563] Worker 1 - PIN: 9996 | Result: 100 - SPC number not found | Progress: 6/10
+[2025-06-17T07:03:42.803Z] 🔍 [82819563] Worker 1 - PIN: 9999 | Result: 0 - Successfully retrieved | Progress: 7/10
+[2025-06-17T07:03:42.805Z] 🎯 [82819563] Worker 1 - FOUND VALID PIN: 9999 (82819563)
+[2025-06-17T07:03:42.807Z] 🎯 [82819563] Saved valid PIN for 82819563 to file: 9999
+[2025-06-17T07:03:42.808Z] ⚠️ [82819563] Worker 1 - Stopping due to shouldStop() condition
+[2025-06-17T07:03:42.809Z] ✅ [82819563] Completed processing accessCode: 82819563
+[2025-06-17T07:03:42.810Z] 🔍 [82819563] === STATISTICS ===
+[2025-06-17T07:03:42.811Z] 🔍 [82819563] Access Code: 82819563
+[2025-06-17T07:03:42.812Z] 🔍 [82819563] PIN Range: 9990 - 9999
+[2025-06-17T07:03:42.812Z] 🔍 [82819563] Total PINs sent: 7
+[2025-06-17T07:03:42.813Z] 🔍 [82819563] Blacklisted PINs: 0
+[2025-06-17T07:03:42.814Z] 🔍 [82819563] Valid PINs found: 1
+[2025-06-17T07:03:42.814Z] 🔍 [82819563] Valid PINs (not blacklisted): 1
+[2025-06-17T07:03:42.815Z] ✅ [82819563] All Valid PINs: 9999
+[2025-06-17T07:03:42.815Z] 🎯 [82819563] Valid PINs (not blacklisted): 9999
+[2025-06-17T07:03:42.816Z] 🔍 [82819563] Files location:
+[2025-06-17T07:03:42.817Z] 🔍 [82819563] - Sent PINs: Data\82819563\sent_pins_history.json
+[2025-06-17T07:03:42.818Z] 🔍 [82819563] - Blacklist: Data\82819563\blacklist_pins.json
+[2025-06-17T07:03:42.818Z] 🔍 [82819563] - Valid PINs: Data\82819563\valid_pins_found.json
