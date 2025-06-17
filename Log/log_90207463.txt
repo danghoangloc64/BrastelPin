@@ -1,0 +1,28 @@
+[2025-06-17T03:41:30.861Z] 🔍 [90207463] Created accessCode folder: Data\90207463
+[2025-06-17T03:41:30.864Z] 🔍 [90207463] Created tracking file for 90207463: Data\90207463\sent_pins_history.json
+[2025-06-17T03:41:30.865Z] 🔍 [90207463] Created tracking file for 90207463: Data\90207463\blacklist_pins.json
+[2025-06-17T03:41:30.866Z] 🔍 [90207463] Created tracking file for 90207463: Data\90207463\valid_pins_found.json
+[2025-06-17T03:41:30.867Z] 🔍 [90207463] Starting PIN Checker for AccessCode: 90207463
+[2025-06-17T03:41:30.867Z] 🔍 [90207463] PIN Range: 180 - 9999
+[2025-06-17T03:41:30.868Z] 🔍 [90207463] Concurrent Workers: 1
+[2025-06-17T03:41:30.868Z] 🔍 [90207463] === STATISTICS ===
+[2025-06-17T03:41:30.869Z] 🔍 [90207463] Access Code: 90207463
+[2025-06-17T03:41:30.870Z] 🔍 [90207463] PIN Range: 180 - 9999
+[2025-06-17T03:41:30.870Z] 🔍 [90207463] Total PINs sent: 0
+[2025-06-17T03:41:30.870Z] 🔍 [90207463] Blacklisted PINs: 0
+[2025-06-17T03:41:30.872Z] 🔍 [90207463] Valid PINs found: 0
+[2025-06-17T03:41:30.873Z] 🔍 [90207463] Files location:
+[2025-06-17T03:41:30.875Z] 🔍 [90207463] - Sent PINs: Data\90207463\sent_pins_history.json
+[2025-06-17T03:41:30.875Z] 🔍 [90207463] - Blacklist: Data\90207463\blacklist_pins.json
+[2025-06-17T03:41:30.876Z] 🔍 [90207463] - Valid PINs: Data\90207463\valid_pins_found.json
+[2025-06-17T03:41:36.853Z] 🔍 [90207463] Worker 1 - PIN: 0180 | Result: 100 - SPC number not found
+[2025-06-17T03:41:42.026Z] 🔍 [90207463] Worker 1 - PIN: 0181 | Result: 100 - SPC number not found
+[2025-06-17T03:41:47.799Z] 🔍 [90207463] Worker 1 - PIN: 0182 | Result: 100 - SPC number not found
+[2025-06-17T03:41:58.303Z] 🔍 [90207463] Worker 1 - PIN: 0183 | Result: 100 - SPC number not found
+[2025-06-17T03:42:04.321Z] 🔍 [90207463] Worker 1 - PIN: 0184 | Result: 100 - SPC number not found
+[2025-06-17T03:42:11.314Z] 🔍 [90207463] Worker 1 - PIN: 0185 | Result: 100 - SPC number not found
+[2025-06-17T03:42:22.082Z] 🔍 [90207463] Worker 1 - PIN: 0186 | Result: 100 - SPC number not found
+[2025-06-17T03:42:27.432Z] 🔍 [90207463] Worker 1 - PIN: 0187 | Result: 100 - SPC number not found
+[2025-06-17T03:42:33.137Z] 🔍 [90207463] Worker 1 - PIN: 0188 | Result: 100 - SPC number not found
+[2025-06-17T03:42:42.833Z] 🔍 [90207463] Worker 1 - PIN: 0189 | Result: 100 - SPC number not found
+[2025-06-17T03:42:49.179Z] 🔍 [90207463] Worker 1 - PIN: 0190 | Result: 100 - SPC number not found
