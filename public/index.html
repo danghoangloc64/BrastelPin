@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brastel PIN Checker - Web Interface</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 5px solid #4facfe;
+        }
+
+        .section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .section h2 i {
+            margin-right: 10px;
+            color: #4facfe;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus {
+            border-color: #4facfe;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
+        }
+
+        .access-code-item {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 2px solid #e9ecef;
+            position: relative;
+        }
+
+        .access-code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .access-code-title {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .remove-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.3s ease;
+        }
+
+        .remove-btn:hover {
+            background: #c82333;
+        }
+
+        .pin-range {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn i {
+            margin-right: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(79, 172, 254, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+            font-size: 18px;
+            padding: 15px 30px;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+        }
+
+        .advanced-settings {
+            display: none;
+        }
+
+        .advanced-settings.show {
+            display: block;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            transform: scale(1.2);
+        }
+
+        .status-section {
+            display: none;
+            background: #e8f5e8;
+            border-left-color: #28a745;
+        }
+
+        .status-section.show {
+            display: block;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .status-item:last-child {
+            border-bottom: none;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-running {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .status-completed {
+            background: #28a745;
+            color: white;
+        }
+
+        .status-error {
+            background: #dc3545;
+            color: white;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4facfe;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid transparent;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+
+        .footer {
+            background: #2c3e50;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .main-content {
+                padding: 20px;
+            }
+
+            .section {
+                padding: 20px;
+            }
+
+            .pin-range {
+                grid-template-columns: 1fr;
+            }
+
+            .settings-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-shield-alt"></i> Brastel PIN Checker</h1>
+            <p>Web Interface for PIN Validation and Management</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Status Section -->
+            <div id="statusSection" class="section status-section">
+                <h2><i class="fas fa-chart-line"></i> Job Status</h2>
+                <div id="jobStatus"></div>
+            </div>
+
+            <!-- Live Logs Section -->
+            <div id="logsSection" class="section status-section">
+                <h2><i class="fas fa-file-alt"></i> Live Logs (Last 10 lines)</h2>
+                <div id="liveLogs" style="background: #1e1e1e; color: #00ff00; padding: 15px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 12px; max-height: 300px; overflow-y: auto;">
+                    <div>Waiting for logs...</div>
+                </div>
+                <button type="button" class="btn btn-secondary" onclick="refreshLogs()" style="margin-top: 10px;">
+                    <i class="fas fa-sync"></i> Refresh Logs
+                </button>
+            </div>
+
+            <!-- Access Codes Configuration -->
+            <div class="section">
+                <h2><i class="fas fa-key"></i> Access Codes Configuration</h2>
+                <div id="accessCodesContainer">
+                    <div class="access-code-item">
+                        <div class="access-code-header">
+                            <span class="access-code-title">Access Code #1</span>
+                            <button type="button" class="remove-btn" onclick="removeAccessCode(this)" style="display: none;">
+                                <i class="fas fa-trash"></i> Remove
+                            </button>
+                        </div>
+                        <div class="form-group">
+                            <label>Access Code:</label>
+                            <input type="text" class="form-control access-code-input" placeholder="Enter access code (e.g., 74974423)" value="74974423">
+                        </div>
+                        <div class="pin-range">
+                            <div class="form-group">
+                                <label>PIN Start:</label>
+                                <input type="number" class="form-control pin-start" placeholder="0000" min="0" max="9999" value="5410">
+                            </div>
+                            <div class="form-group">
+                                <label>PIN End:</label>
+                                <input type="number" class="form-control pin-end" placeholder="9999" min="0" max="9999" value="9999">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-secondary" onclick="addAccessCode()">
+                    <i class="fas fa-plus"></i> Add Another Access Code
+                </button>
+            </div>
+
+            <!-- Basic Settings -->
+            <div class="section">
+                <h2><i class="fas fa-cog"></i> Basic Settings</h2>
+                <div class="settings-grid">
+                    <div class="form-group">
+                        <label>Concurrent Workers:</label>
+                        <input type="number" id="concurrentWorkers" class="form-control" min="1" max="10" value="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Max Undefined Results:</label>
+                        <input type="number" id="maxUndefinedResults" class="form-control" min="1" max="100" value="25">
+                    </div>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="randomProcessing">
+                    <label for="randomProcessing">Enable Random Processing (Shuffle Mode)</label>
+                </div>
+            </div>
+
+            <!-- Proxies & Cookies Configuration -->
+            <div class="section">
+                <h2><i class="fas fa-shield-alt"></i> Proxies & Cookies Configuration</h2>
+                <div class="form-group">
+                    <label>Proxies (one per line, leave empty for no proxy):</label>
+                    <textarea id="proxiesConfig" class="form-control" rows="5" placeholder="http://proxy1:port&#10;http://proxy2:port&#10;http://proxy3:port">
+
+
+</textarea>
+                    <small style="color: #666; font-size: 12px;">Leave empty lines for no proxy. Each worker will use a different proxy.</small>
+                </div>
+                <div class="form-group">
+                    <label>Cookies (one per line) - REQUIRED:</label>
+                    <textarea id="cookiesConfig" class="form-control" rows="5" placeholder="cookie1=value1; session=abc123&#10;cookie2=value2; session=def456">_ga=GA1.2.2004863075.1749788627; ASP.NET_SessionId=kkmvt2y4ni0d4bp1sg0vz3xf; AWSELB=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9F2459D1D823108D586FB065E7B5F9002AD22EB5161F2C7AB3014A70051CE4FA39D6AA5C0E88A842A861D33DC4EA44715; AWSELBCORS=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9F2459D1D823108D586FB065E7B5F9002AD22EB5161F2C7AB3014A70051CE4FA39D6AA5C0E88A842A861D33DC4EA44715; _gid=GA1.2.756149190.1750037918; ASPSESSIONIDCQDCDADQ=EMMPDBIDOPDCKJKJCDCMKLBJ; _gat=1
+ASPSESSIONIDCQDCDADQ=FMMPDBIDMJCOKDIBPHJPDCOP; AWSELB=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9630A4EB55147521A4CC93077CC30C2F8ED0CDD21FDE9E146F00EB73527DB00B97FD4E580278805751D3836308F6F276B; AWSELBCORS=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9630A4EB55147521A4CC93077CC30C2F8ED0CDD21FDE9E146F00EB73527DB00B97FD4E580278805751D3836308F6F276B; ASP.NET_SessionId=jdjtcrz3ldwqknn0la2hglta; _ga=GA1.2.1880294636.1750065908; _gid=GA1.2.166709486.1750065908; _gat=1
+ASPSESSIONIDCQDCDADQ=FMMPDBIDMJCOKDIBPHJPDCOP; AWSELB=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9630A4EB55147521A4CC93077CC30C2F8ED0CDD21FDE9E146F00EB73527DB00B97FD4E580278805751D3836308F6F276B; AWSELBCORS=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9630A4EB55147521A4CC93077CC30C2F8ED0CDD21FDE9E146F00EB73527DB00B97FD4E580278805751D3836308F6F276B; ASP.NET_SessionId=jdjtcrz3ldwqknn0la2hglta; _ga=GA1.2.1880294636.1750065908; _gid=GA1.2.166709486.1750065908; _gat=1; signInLangTrackEvent=50250189300514</textarea>
+                    <small style="color: #666; font-size: 12px;">Each worker will use a different cookie. Add more cookies for better rotation.</small>
+                </div>
+            </div>
+
+            <!-- Advanced Settings -->
+            <div class="section">
+                <h2>
+                    <i class="fas fa-sliders-h"></i> Advanced Settings
+                    <button type="button" class="btn btn-secondary" onclick="toggleAdvanced()" style="margin-left: auto; font-size: 12px;">
+                        <i class="fas fa-chevron-down" id="advancedIcon"></i> Toggle
+                    </button>
+                </h2>
+                <div id="advancedSettings" class="advanced-settings">
+                    <div class="settings-grid">
+                        <div class="form-group">
+                            <label>Max Retries:</label>
+                            <input type="number" id="maxRetries" class="form-control" min="1" max="50" value="10">
+                        </div>
+                        <div class="form-group">
+                            <label>Retry Delay (ms):</label>
+                            <input type="number" id="retryDelay" class="form-control" min="100" max="10000" value="3000">
+                        </div>
+                        <div class="form-group">
+                            <label>Delay Between PINs (ms):</label>
+                            <input type="number" id="delayBetweenPins" class="form-control" min="0" max="5000" value="100">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Start Button -->
+            <button type="button" id="startBtn" class="btn btn-success" onclick="startPinChecker()">
+                <i class="fas fa-play"></i> Start PIN Checking
+            </button>
+
+            <!-- Alert Messages -->
+            <div id="alertContainer"></div>
+        </div>
+
+        <div class="footer">
+            <p>&copy; 2024 Brastel PIN Checker - Web Interface v1.0</p>
+        </div>
+    </div>
+
+    <script>
+        let accessCodeCounter = 1;
+        let currentJobId = null;
+        let statusInterval = null;
+
+        function addAccessCode() {
+            accessCodeCounter++;
+            const container = document.getElementById('accessCodesContainer');
+            const newItem = document.createElement('div');
+            newItem.className = 'access-code-item';
+            newItem.innerHTML = `
+                <div class="access-code-header">
+                    <span class="access-code-title">Access Code #${accessCodeCounter}</span>
+                    <button type="button" class="remove-btn" onclick="removeAccessCode(this)">
+                        <i class="fas fa-trash"></i> Remove
+                    </button>
+                </div>
+                <div class="form-group">
+                    <label>Access Code:</label>
+                    <input type="text" class="form-control access-code-input" placeholder="Enter access code">
+                </div>
+                <div class="pin-range">
+                    <div class="form-group">
+                        <label>PIN Start:</label>
+                        <input type="number" class="form-control pin-start" placeholder="0000" min="0" max="9999" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label>PIN End:</label>
+                        <input type="number" class="form-control pin-end" placeholder="9999" min="0" max="9999" value="9999">
+                    </div>
+                </div>
+            `;
+            container.appendChild(newItem);
+            updateRemoveButtons();
+        }
+
+        function removeAccessCode(button) {
+            const item = button.closest('.access-code-item');
+            item.remove();
+            updateAccessCodeNumbers();
+            updateRemoveButtons();
+        }
+
+        function updateAccessCodeNumbers() {
+            const items = document.querySelectorAll('.access-code-item');
+            items.forEach((item, index) => {
+                const title = item.querySelector('.access-code-title');
+                title.textContent = `Access Code #${index + 1}`;
+            });
+            accessCodeCounter = items.length;
+        }
+
+        function updateRemoveButtons() {
+            const items = document.querySelectorAll('.access-code-item');
+            const removeButtons = document.querySelectorAll('.remove-btn');
+
+            removeButtons.forEach(btn => {
+                btn.style.display = items.length > 1 ? 'block' : 'none';
+            });
+        }
+
+        function toggleAdvanced() {
+            const settings = document.getElementById('advancedSettings');
+            const icon = document.getElementById('advancedIcon');
+
+            if (settings.classList.contains('show')) {
+                settings.classList.remove('show');
+                icon.className = 'fas fa-chevron-down';
+            } else {
+                settings.classList.add('show');
+                icon.className = 'fas fa-chevron-up';
+            }
+        }
+
+        function showAlert(message, type = 'success') {
+            const container = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
+                ${message}
+            `;
+            container.appendChild(alert);
+
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+
+        function validateForm() {
+            const accessCodeInputs = document.querySelectorAll('.access-code-input');
+            const pinStarts = document.querySelectorAll('.pin-start');
+            const pinEnds = document.querySelectorAll('.pin-end');
+
+            for (let i = 0; i < accessCodeInputs.length; i++) {
+                const accessCode = accessCodeInputs[i].value.trim();
+                const pinStart = parseInt(pinStarts[i].value);
+                const pinEnd = parseInt(pinEnds[i].value);
+
+                if (!accessCode) {
+                    showAlert(`Access Code #${i + 1} is required`, 'error');
+                    return false;
+                }
+
+                if (isNaN(pinStart) || isNaN(pinEnd)) {
+                    showAlert(`PIN range for Access Code #${i + 1} must be valid numbers`, 'error');
+                    return false;
+                }
+
+                if (pinStart > pinEnd) {
+                    showAlert(`PIN start cannot be greater than PIN end for Access Code #${i + 1}`, 'error');
+                    return false;
+                }
+
+                if (pinStart < 0 || pinEnd > 9999) {
+                    showAlert(`PIN range for Access Code #${i + 1} must be between 0000 and 9999`, 'error');
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+                function collectFormData() {
+            const accessCodeInputs = document.querySelectorAll('.access-code-input');
+            const pinStarts = document.querySelectorAll('.pin-start');
+            const pinEnds = document.querySelectorAll('.pin-end');
+
+            const accessCodes = [];
+            for (let i = 0; i < accessCodeInputs.length; i++) {
+                accessCodes.push({
+                    accessCode: accessCodeInputs[i].value.trim(),
+                    pinRange: {
+                        start: parseInt(pinStarts[i].value),
+                        end: parseInt(pinEnds[i].value)
+                    }
+                });
+            }
+
+            // Collect proxies and cookies
+            const proxiesText = document.getElementById('proxiesConfig').value.trim();
+            const cookiesText = document.getElementById('cookiesConfig').value.trim();
+
+            const proxies = proxiesText ? proxiesText.split('\n').map(p => p.trim()).filter(p => p) : [''];
+            const cookies = cookiesText ? cookiesText.split('\n').map(c => c.trim()).filter(c => c) : [];
+
+            if (cookies.length === 0) {
+                showAlert('At least one cookie is required', 'error');
+                return null;
+            }
+
+            const settings = {
+                concurrentWorkers: document.getElementById('concurrentWorkers').value,
+                maxUndefinedResults: document.getElementById('maxUndefinedResults').value,
+                randomProcessing: document.getElementById('randomProcessing').checked,
+                maxRetries: document.getElementById('maxRetries').value,
+                retryDelay: document.getElementById('retryDelay').value,
+                delayBetweenPins: document.getElementById('delayBetweenPins').value
+            };
+
+            return { accessCodes, settings, proxies, cookies };
+        }
+
+                async function startPinChecker() {
+            if (!validateForm()) {
+                return;
+            }
+
+            const formData = collectFormData();
+            if (!formData) {
+                return; // Validation failed
+            }
+
+            const startBtn = document.getElementById('startBtn');
+
+            // Disable button and show loading
+            startBtn.disabled = true;
+            startBtn.innerHTML = '<div class="loading-spinner"></div> Starting...';
+
+            try {
+                const response = await fetch('/api/start-checker', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    currentJobId = result.jobId;
+                    showAlert(`PIN checker started successfully! Job ID: ${result.jobId}`, 'success');
+                    showStatusSection();
+                    showLogsSection();
+                    startStatusPolling();
+                    startLogsPolling();
+
+                    // Update button
+                    startBtn.innerHTML = '<i class="fas fa-stop"></i> Running... (Check Console for Details)';
+                } else {
+                    throw new Error(result.error || 'Unknown error occurred');
+                }
+
+            } catch (error) {
+                showAlert(`Error: ${error.message}`, 'error');
+                startBtn.disabled = false;
+                startBtn.innerHTML = '<i class="fas fa-play"></i> Start PIN Checking';
+            }
+        }
+
+        function showStatusSection() {
+            const statusSection = document.getElementById('statusSection');
+            statusSection.classList.add('show');
+        }
+
+        function showLogsSection() {
+            const logsSection = document.getElementById('logsSection');
+            logsSection.classList.add('show');
+        }
+
+        function startStatusPolling() {
+            if (statusInterval) {
+                clearInterval(statusInterval);
+            }
+
+            statusInterval = setInterval(async () => {
+                if (currentJobId) {
+                    await updateJobStatus();
+                }
+            }, 3000);
+
+            // Initial status update
+            updateJobStatus();
+        }
+
+        async function updateJobStatus() {
+            try {
+                const response = await fetch(`/api/job-status/${currentJobId}`);
+                const job = await response.json();
+
+                const statusContainer = document.getElementById('jobStatus');
+                const statusBadge = `<span class="status-badge status-${job.status}">${job.status}</span>`;
+
+                let statusHTML = `
+                    <div class="status-item">
+                        <span>Job ID:</span>
+                        <span>${job.jobId}</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Status:</span>
+                        ${statusBadge}
+                    </div>
+                    <div class="status-item">
+                        <span>Started:</span>
+                        <span>${new Date(job.startTime).toLocaleString()}</span>
+                    </div>
+                `;
+
+                if (job.endTime) {
+                    statusHTML += `
+                        <div class="status-item">
+                            <span>Ended:</span>
+                            <span>${new Date(job.endTime).toLocaleString()}</span>
+                        </div>
+                    `;
+                }
+
+                if (job.error) {
+                    statusHTML += `
+                        <div class="status-item">
+                            <span>Error:</span>
+                            <span style="color: #dc3545;">${job.error}</span>
+                        </div>
+                    `;
+                }
+
+                statusContainer.innerHTML = statusHTML;
+
+                                // If job is completed or error, stop polling and reset button
+                if (job.status === 'completed' || job.status === 'error') {
+                    clearInterval(statusInterval);
+                    stopLogsPolling();
+                    const startBtn = document.getElementById('startBtn');
+                    startBtn.disabled = false;
+                    startBtn.innerHTML = '<i class="fas fa-play"></i> Start PIN Checking';
+
+                    if (job.status === 'completed') {
+                        showAlert('PIN checking completed successfully! Check the Data folder for results.', 'success');
+                    } else if (job.status === 'error') {
+                        showAlert(`PIN checking failed: ${job.error}`, 'error');
+                    }
+                }
+
+            } catch (error) {
+                console.error('Error updating job status:', error);
+            }
+        }
+
+        // Logs polling functionality
+        let logsInterval = null;
+
+        function startLogsPolling() {
+            if (logsInterval) {
+                clearInterval(logsInterval);
+            }
+
+            logsInterval = setInterval(async () => {
+                await refreshLogs();
+            }, 2000);
+
+            // Initial logs update
+            refreshLogs();
+        }
+
+        function stopLogsPolling() {
+            if (logsInterval) {
+                clearInterval(logsInterval);
+                logsInterval = null;
+            }
+        }
+
+        async function refreshLogs() {
+            try {
+                const response = await fetch('/api/logs');
+                const result = await response.json();
+
+                const logsContainer = document.getElementById('liveLogs');
+
+                if (result.success && result.logs && result.logs.length > 0) {
+                    const logsHTML = result.logs.map(log => `<div>${log}</div>`).join('');
+                    logsContainer.innerHTML = logsHTML;
+
+                    // Auto scroll to bottom
+                    logsContainer.scrollTop = logsContainer.scrollHeight;
+                } else {
+                    logsContainer.innerHTML = '<div>No logs available yet...</div>';
+                }
+
+            } catch (error) {
+                console.error('Error fetching logs:', error);
+                const logsContainer = document.getElementById('liveLogs');
+                logsContainer.innerHTML = '<div style="color: #ff6b6b;">Error loading logs</div>';
+            }
+        }
+
+        // Initialize the form
+        document.addEventListener('DOMContentLoaded', function() {
+            updateRemoveButtons();
+        });
+    </script>
+</body>
+</html>
