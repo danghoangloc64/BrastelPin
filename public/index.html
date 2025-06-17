@@ -439,6 +439,38 @@
                 </button>
             </div>
 
+            <!-- Jobs State File Editor Section -->
+            <div id="jobsStateFileSection" class="section">
+                <h2>
+                    <i class="fas fa-edit"></i> Edit Jobs State File (running_jobs_state.json)
+                    <button type="button" class="btn btn-secondary" onclick="toggleJobsStateEditor()" style="margin-left: auto; font-size: 12px;">
+                        <i class="fas fa-chevron-down" id="jobsStateIcon"></i> Toggle
+                    </button>
+                </h2>
+                <div id="jobsStateEditorContent" class="advanced-settings">
+                    <div class="form-group">
+                        <label>File Content:</label>
+                        <textarea id="jobsStateFileContent" class="form-control" rows="15" style="font-family: 'Courier New', monospace; font-size: 12px;" placeholder="Loading file content..."></textarea>
+                        <small style="color: #666; font-size: 12px;">
+                            ⚠️ Be careful when editing this file. Invalid JSON format may cause issues.<br>
+                            💾 A backup will be created automatically when saving changes.
+                        </small>
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <button type="button" class="btn btn-primary" onclick="loadJobsStateFile()">
+                            <i class="fas fa-download"></i> Load Current File
+                        </button>
+                        <button type="button" class="btn btn-success" onclick="saveJobsStateFile()" style="margin-left: 10px;">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="formatJobsStateFile()" style="margin-left: 10px;">
+                            <i class="fas fa-code"></i> Format JSON
+                        </button>
+                    </div>
+                    <div id="jobsStateFileStatus" style="margin-top: 15px;"></div>
+                </div>
+            </div>
+
             <!-- Status Section -->
             <div id="statusSection" class="section status-section">
                 <h2><i class="fas fa-chart-line"></i> Current Job Status</h2>
@@ -631,6 +663,19 @@ ASPSESSIONIDCQDCDADQ=FMMPDBIDMJCOKDIBPHJPDCOP; AWSELB=1BB79F7B04C9CBC0EF6C78B167
         function toggleAdvanced() {
             const settings = document.getElementById('advancedSettings');
             const icon = document.getElementById('advancedIcon');
+
+            if (settings.classList.contains('show')) {
+                settings.classList.remove('show');
+                icon.className = 'fas fa-chevron-down';
+            } else {
+                settings.classList.add('show');
+                icon.className = 'fas fa-chevron-up';
+            }
+        }
+
+        function toggleJobsStateEditor() {
+            const settings = document.getElementById('jobsStateEditorContent');
+            const icon = document.getElementById('jobsStateIcon');
 
             if (settings.classList.contains('show')) {
                 settings.classList.remove('show');
@@ -1063,10 +1108,121 @@ ASPSESSIONIDCQDCDADQ=FMMPDBIDMJCOKDIBPHJPDCOP; AWSELB=1BB79F7B04C9CBC0EF6C78B167
             });
         }
 
+        // Jobs State File Editor Functions
+        async function loadJobsStateFile() {
+            try {
+                const response = await fetch('/api/jobs-state-file');
+                const result = await response.json();
+
+                const textarea = document.getElementById('jobsStateFileContent');
+                const statusDiv = document.getElementById('jobsStateFileStatus');
+
+                if (result.success) {
+                    textarea.value = result.content;
+                    statusDiv.innerHTML = `<div style="color: #28a745; padding: 10px; background: #d4edda; border-radius: 5px;">
+                        <i class="fas fa-check-circle"></i> File loaded successfully: ${result.filename}
+                        ${result.message ? '<br><small>' + result.message + '</small>' : ''}
+                    </div>`;
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                console.error('Error loading jobs state file:', error);
+                const statusDiv = document.getElementById('jobsStateFileStatus');
+                statusDiv.innerHTML = `<div style="color: #dc3545; padding: 10px; background: #f8d7da; border-radius: 5px;">
+                    <i class="fas fa-exclamation-circle"></i> Error loading file: ${error.message}
+                </div>`;
+            }
+        }
+
+        async function saveJobsStateFile() {
+            const textarea = document.getElementById('jobsStateFileContent');
+            const statusDiv = document.getElementById('jobsStateFileStatus');
+            const content = textarea.value.trim();
+
+            if (!content) {
+                statusDiv.innerHTML = `<div style="color: #dc3545; padding: 10px; background: #f8d7da; border-radius: 5px;">
+                    <i class="fas fa-exclamation-circle"></i> Please enter content before saving
+                </div>`;
+                return;
+            }
+
+            // Validate JSON before sending
+            try {
+                JSON.parse(content);
+            } catch (parseError) {
+                statusDiv.innerHTML = `<div style="color: #dc3545; padding: 10px; background: #f8d7da; border-radius: 5px;">
+                    <i class="fas fa-exclamation-circle"></i> Invalid JSON format: ${parseError.message}
+                </div>`;
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/jobs-state-file', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ content })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    statusDiv.innerHTML = `<div style="color: #28a745; padding: 10px; background: #d4edda; border-radius: 5px;">
+                        <i class="fas fa-check-circle"></i> ${result.message}
+                        ${result.backupFile ? '<br><small>Backup created: ' + result.backupFile + '</small>' : ''}
+                    </div>`;
+
+                    // Refresh jobs list to show updated data
+                    setTimeout(() => {
+                        refreshJobs();
+                    }, 1000);
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                console.error('Error saving jobs state file:', error);
+                statusDiv.innerHTML = `<div style="color: #dc3545; padding: 10px; background: #f8d7da; border-radius: 5px;">
+                    <i class="fas fa-exclamation-circle"></i> Error saving file: ${error.message}
+                </div>`;
+            }
+        }
+
+        function formatJobsStateFile() {
+            const textarea = document.getElementById('jobsStateFileContent');
+            const statusDiv = document.getElementById('jobsStateFileStatus');
+            const content = textarea.value.trim();
+
+            if (!content) {
+                statusDiv.innerHTML = `<div style="color: #dc3545; padding: 10px; background: #f8d7da; border-radius: 5px;">
+                    <i class="fas fa-exclamation-circle"></i> No content to format
+                </div>`;
+                return;
+            }
+
+            try {
+                const parsed = JSON.parse(content);
+                const formatted = JSON.stringify(parsed, null, 2);
+                textarea.value = formatted;
+
+                statusDiv.innerHTML = `<div style="color: #17a2b8; padding: 10px; background: #d1ecf1; border-radius: 5px;">
+                    <i class="fas fa-code"></i> JSON formatted successfully
+                </div>`;
+            } catch (parseError) {
+                statusDiv.innerHTML = `<div style="color: #dc3545; padding: 10px; background: #f8d7da; border-radius: 5px;">
+                    <i class="fas fa-exclamation-circle"></i> Cannot format: Invalid JSON format - ${parseError.message}
+                </div>`;
+            }
+        }
+
         // Initialize the form
         document.addEventListener('DOMContentLoaded', function() {
             updateRemoveButtons();
             refreshJobs(); // Load existing jobs on page load
+
+            // Auto-load jobs state file on page load
+            loadJobsStateFile();
 
             // Auto-restore any running job after a short delay
             setTimeout(autoRestoreRunningJob, 500);

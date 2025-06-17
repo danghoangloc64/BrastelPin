@@ -37393,3 +37393,27 @@
 [2025-06-17T09:12:24.833Z] 🔍 [33849108] Worker 1 - PIN: 1358 | Result: 100 - SPC number not found | Progress: 47/7200
 [2025-06-17T09:12:30.965Z] 🔍 [33849108] Worker 1 - PIN: 4845 | Result: 100 - SPC number not found | Progress: 48/7200
 [2025-06-17T09:12:36.479Z] 🔍 [33849108] Worker 1 - PIN: 1368 | Result: 100 - SPC number not found | Progress: 49/7200
+[2025-06-17T09:24:23.984Z] 🔍 [33849108] Starting PIN Checker for AccessCode: 33849108
+[2025-06-17T09:24:23.984Z] 🔍 [33849108] PIN Range: 9990 - 9999
+[2025-06-17T09:24:23.988Z] 🔍 [33849108] Concurrent Workers: 1
+[2025-06-17T09:24:23.991Z] 🔍 [33849108] === STATISTICS ===
+[2025-06-17T09:24:23.991Z] 🔍 [33849108] Access Code: 33849108
+[2025-06-17T09:24:23.991Z] 🔍 [33849108] PIN Range: 9990 - 9999
+[2025-06-17T09:24:23.991Z] 🔍 [33849108] Total PINs sent: 2849
+[2025-06-17T09:24:23.992Z] 🔍 [33849108] Blacklisted PINs: 0
+[2025-06-17T09:24:23.992Z] 🔍 [33849108] Valid PINs found: 0
+[2025-06-17T09:24:23.992Z] 🔍 [33849108] Valid PINs (not blacklisted): 0
+[2025-06-17T09:24:23.992Z] 🔍 [33849108] Files location:
+[2025-06-17T09:24:23.993Z] 🔍 [33849108] - Sent PINs: Data\33849108\sent_pins_history.json
+[2025-06-17T09:24:23.993Z] 🔍 [33849108] - Blacklist: Data\33849108\blacklist_pins.json
+[2025-06-17T09:24:23.993Z] 🔍 [33849108] - Valid PINs: Data\33849108\valid_pins_found.json
+[2025-06-17T09:24:23.994Z] ⏭️ [33849108] Worker 1 - Skipping already sent PIN: 9990
+[2025-06-17T09:24:23.994Z] ⏭️ [33849108] Worker 1 - Skipping already sent PIN: 9991
+[2025-06-17T09:24:23.994Z] ⏭️ [33849108] Worker 1 - Skipping already sent PIN: 9998
+[2025-06-17T09:24:23.995Z] ⏭️ [33849108] Worker 1 - Skipping already sent PIN: 9999
+[2025-06-17T09:24:23.996Z] 🔍 [33849108] Worker 1 - Total unsent PINs available: 6
+[2025-06-17T09:24:23.996Z] 🔍 [33849108] Worker 1 - Using random shuffle processing mode
+[2025-06-17T09:24:23.997Z] 🔍 [33849108] Worker 1 - Processing 6 PINs in random order
+[2025-06-17T09:24:30.745Z] 🔍 [33849108] Worker 1 - PIN: 9992 | Result: 100 - SPC number not found | Progress: 1/6
+[2025-06-17T09:24:36.857Z] 🔍 [33849108] Worker 1 - PIN: 9996 | Result: 100 - SPC number not found | Progress: 2/6
+[2025-06-17T09:24:42.864Z] 🔍 [33849108] Worker 1 - PIN: 9997 | Result: 100 - SPC number not found | Progress: 3/6

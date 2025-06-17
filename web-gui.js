@@ -316,6 +316,101 @@ app.get('/api/logs', (req, res) => {
   }
 });
 
+// API to get running_jobs_state.json content
+app.get('/api/jobs-state-file', (req, res) => {
+  try {
+    if (fs.existsSync(JOBS_STATE_FILE)) {
+      const content = fs.readFileSync(JOBS_STATE_FILE, 'utf8');
+      res.json({
+        success: true,
+        content,
+        filename: JOBS_STATE_FILE
+      });
+    } else {
+      res.json({
+        success: true,
+        content: '[]',
+        filename: JOBS_STATE_FILE,
+        message: 'File does not exist, showing empty array'
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// API to update running_jobs_state.json content
+app.post('/api/jobs-state-file', (req, res) => {
+  try {
+    const { content } = req.body;
+
+    if (!content) {
+      return res.status(400).json({
+        success: false,
+        error: 'Content is required'
+      });
+    }
+
+    // Validate JSON format
+    let parsedContent;
+    try {
+      parsedContent = JSON.parse(content);
+    } catch (parseError) {
+      return res.status(400).json({
+        success: false,
+        error: `Invalid JSON format: ${parseError.message}`
+      });
+    }
+
+    // Validate structure (should be an array)
+    if (!Array.isArray(parsedContent)) {
+      return res.status(400).json({
+        success: false,
+        error: 'JSON content must be an array'
+      });
+    }
+
+    // Validate each job object structure
+    for (let i = 0; i < parsedContent.length; i++) {
+      const job = parsedContent[i];
+      if (!job.jobId || !job.status || !job.startTime || !job.config) {
+        return res.status(400).json({
+          success: false,
+          error: `Invalid job structure at index ${i}. Required fields: jobId, status, startTime, config`
+        });
+      }
+    }
+
+    // Create backup of current file
+    const backupFile = `${JOBS_STATE_FILE}.backup.${Date.now()}`;
+    if (fs.existsSync(JOBS_STATE_FILE)) {
+      fs.copyFileSync(JOBS_STATE_FILE, backupFile);
+    }
+
+    // Write new content
+    fs.writeFileSync(JOBS_STATE_FILE, JSON.stringify(parsedContent, null, 2));
+
+    // Reload the jobs state in memory
+    runningJobs.clear();
+    loadJobsState();
+
+    res.json({
+      success: true,
+      message: 'File updated successfully',
+      backupFile
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Create public directory if it doesn't exist
 if (!fs.existsSync('public')) {
   fs.mkdirSync('public');
