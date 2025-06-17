@@ -418,9 +418,6 @@ if (!fs.existsSync('public')) {
 }
 
 app.listen(PORT, HOST, () => {
-  console.log('🌐 Brastel PIN Checker Web GUI is running at http://localhost:3000');
-  console.log('📱 Open your browser and navigate to the URL above');
-  console.log('🚀 You can now configure and run PIN checking through the web interface');
 });
 
 module.exports = app;

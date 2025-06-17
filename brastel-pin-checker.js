@@ -454,7 +454,7 @@ class Logger {
     const emoji = EMOJIS[level] || '📝';
     const fullMessage = `[${timestamp}] ${emoji} [${this.accessCode}] ${message}`;
 
-    console.log(fullMessage);
+    // console.log(fullMessage);
     fsSync.appendFileSync(this.logFile, `${fullMessage}\n`);
   }
 
@@ -631,7 +631,7 @@ class PinChecker {
       }
 
       // Valid PIN found
-      this.logger.found(`Worker ${workerId} - FOUND VALID PIN: ${pin} (${this.accessCode})`);
+      this.logger.found(`Worker ${workerId} - FOUND VALID PIN: ${pin}`);
       this.fileManager.addValidPin(pin);
       this.found = true;
       return true;
