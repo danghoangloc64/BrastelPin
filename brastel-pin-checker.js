@@ -872,7 +872,7 @@ class SingleAccessCodeChecker {
 
       const worker = new Worker(i + 1, this.logger, this.proxyManager, workerPinChecker, this.fileManager);
       const cookie = CONFIG.cookies[i] || CONFIG.cookies[0]; // Fallback to first cookie
-      const staticProxy = CONFIG.proxies[i] || CONFIG.proxies[0]; // Fallback to first proxy
+      const staticProxy = CONFIG.proxies[i] || ''; // Fallback to unused proxy
 
       workers.push(worker.process(pinBatches[i] || [], cookie, staticProxy));
     }

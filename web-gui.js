@@ -4,6 +4,7 @@ const fs = require('fs');
 const { BrastelPinChecker, CONFIG } = require('./brastel-pin-checker');
 
 const app = express();
+const HOST = '0.0.0.0';
 const PORT = 3000;
 
 // File to persist job states
@@ -416,7 +417,7 @@ if (!fs.existsSync('public')) {
   fs.mkdirSync('public');
 }
 
-app.listen(PORT, () => {
+app.listen(PORT, HOST, () => {
   console.log('🌐 Brastel PIN Checker Web GUI is running at http://localhost:3000');
   console.log('📱 Open your browser and navigate to the URL above');
   console.log('🚀 You can now configure and run PIN checking through the web interface');
