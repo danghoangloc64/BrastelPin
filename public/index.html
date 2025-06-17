@@ -1001,10 +1001,75 @@ ASPSESSIONIDCQDCDADQ=FMMPDBIDMJCOKDIBPHJPDCOP; AWSELB=1BB79F7B04C9CBC0EF6C78B167
             }
         }
 
+                // Auto-restore running job state on page load
+        async function autoRestoreRunningJob() {
+            try {
+                const response = await fetch('/api/jobs');
+                const jobs = await response.json();
+
+                // Find any running job (most recent first)
+                const runningJobs = jobs.filter(job => job.status === 'running');
+
+                if (runningJobs.length > 0) {
+                    // Take the most recent running job
+                    const runningJob = runningJobs.sort((a, b) => new Date(b.startTime) - new Date(a.startTime))[0];
+
+                    console.log('Found running job:', runningJob.jobId);
+
+                    // Restore UI state
+                    currentJobId = runningJob.jobId;
+
+                    // Update start button
+                    const startBtn = document.getElementById('startBtn');
+                    startBtn.disabled = true;
+                    startBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang chạy... (Đã khôi phục)';
+
+                    // Show status and logs sections
+                    showStatusSection();
+                    showLogsSection();
+
+                    // Start polling for the running job
+                    startStatusPolling();
+                    startLogsPolling();
+
+                    // Show notification with Vietnamese text
+                    if (runningJobs.length === 1) {
+                        showAlert(`✅ Đã khôi phục job đang chạy: ${runningJob.jobId}`, 'success');
+                    } else {
+                        showAlert(`✅ Đã khôi phục job đang chạy: ${runningJob.jobId} (${runningJobs.length} job đang chạy)`, 'success');
+                    }
+
+                    // Highlight the current running job in the jobs list
+                    setTimeout(() => {
+                        highlightCurrentJob(runningJob.jobId);
+                    }, 1000);
+                }
+            } catch (error) {
+                console.error('Error auto-restoring running job:', error);
+                showAlert('❌ Lỗi khi khôi phục job đang chạy', 'error');
+            }
+        }
+
+        // Highlight current running job in the jobs list
+        function highlightCurrentJob(jobId) {
+            const jobElements = document.querySelectorAll('.job-item');
+            jobElements.forEach(element => {
+                const jobIdSpan = element.querySelector('.job-id');
+                if (jobIdSpan && jobIdSpan.textContent.includes(jobId)) {
+                    element.style.border = '2px solid #4facfe';
+                    element.style.backgroundColor = '#f0f8ff';
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            });
+        }
+
         // Initialize the form
         document.addEventListener('DOMContentLoaded', function() {
             updateRemoveButtons();
             refreshJobs(); // Load existing jobs on page load
+
+            // Auto-restore any running job after a short delay
+            setTimeout(autoRestoreRunningJob, 500);
         });
     </script>
 </body>

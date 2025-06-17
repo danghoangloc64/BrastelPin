@@ -40,21 +40,35 @@ function loadJobsState() {
   try {
     if (fs.existsSync(JOBS_STATE_FILE)) {
       const jobsArray = JSON.parse(fs.readFileSync(JOBS_STATE_FILE, 'utf8'));
+      let restoredCount = 0;
+      let runningCount = 0;
 
       for (const jobData of jobsArray) {
+        const wasRunning = jobData.status === 'running';
+
         runningJobs.set(jobData.jobId, {
           checker: null, // Will be recreated if needed
-          status: jobData.status === 'running' ? 'interrupted' : jobData.status,
+          status: wasRunning ? 'interrupted' : jobData.status,
           startTime: new Date(jobData.startTime),
           endTime: jobData.endTime ? new Date(jobData.endTime) : null,
           error: jobData.error,
           config: jobData.config,
           currentProgress: jobData.currentProgress || {},
-          wasRestored: true
+          wasRestored: true,
+          wasRunning
         });
+
+        restoredCount++;
+        if (wasRunning) runningCount++;
       }
 
-      console.log(`📋 Restored ${jobsArray.length} job(s) from previous session`);
+      if (restoredCount > 0) {
+        console.log(`📋 Restored ${restoredCount} job(s) from previous session`);
+        if (runningCount > 0) {
+          console.log(`⚠️  ${runningCount} job(s) were running when application stopped - marked as 'interrupted'`);
+          console.log('💡 Use the web interface to resume interrupted jobs');
+        }
+      }
     }
   } catch (error) {
     console.error('❌ Failed to load jobs state:', error.message);
