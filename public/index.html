@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Brastel PIN Checker - Web Interface</title>
+    <title>Brastel PIN</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         * {
@@ -25,7 +26,7 @@
             margin: 0 auto;
             background: white;
             border-radius: 15px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
             overflow: hidden;
         }
 
@@ -271,8 +272,13 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         .alert {
@@ -422,12 +428,13 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
-        <div class="header">
+        <!-- <div class="header">
             <h1><i class="fas fa-shield-alt"></i> Brastel PIN Checker</h1>
             <p>Web Interface for PIN Validation and Management</p>
-        </div>
+        </div> -->
 
         <div class="main-content">
             <!-- Job Management Section -->
@@ -443,14 +450,17 @@
             <div id="jobsStateFileSection" class="section">
                 <h2>
                     <i class="fas fa-edit"></i> Edit Jobs State File (running_jobs_state.json)
-                    <button type="button" class="btn btn-secondary" onclick="toggleJobsStateEditor()" style="margin-left: auto; font-size: 12px;">
+                    <button type="button" class="btn btn-secondary" onclick="toggleJobsStateEditor()"
+                        style="margin-left: auto; font-size: 12px;">
                         <i class="fas fa-chevron-down" id="jobsStateIcon"></i> Toggle
                     </button>
                 </h2>
                 <div id="jobsStateEditorContent" class="advanced-settings">
                     <div class="form-group">
                         <label>File Content:</label>
-                        <textarea id="jobsStateFileContent" class="form-control" rows="15" style="font-family: 'Courier New', monospace; font-size: 12px;" placeholder="Loading file content..."></textarea>
+                        <textarea id="jobsStateFileContent" class="form-control" rows="15"
+                            style="font-family: 'Courier New', monospace; font-size: 12px;"
+                            placeholder="Loading file content..."></textarea>
                         <small style="color: #666; font-size: 12px;">
                             ⚠️ Be careful when editing this file. Invalid JSON format may cause issues.<br>
                             💾 A backup will be created automatically when saving changes.
@@ -460,10 +470,12 @@
                         <button type="button" class="btn btn-primary" onclick="loadJobsStateFile()">
                             <i class="fas fa-download"></i> Load Current File
                         </button>
-                        <button type="button" class="btn btn-success" onclick="saveJobsStateFile()" style="margin-left: 10px;">
+                        <button type="button" class="btn btn-success" onclick="saveJobsStateFile()"
+                            style="margin-left: 10px;">
                             <i class="fas fa-save"></i> Save Changes
                         </button>
-                        <button type="button" class="btn btn-secondary" onclick="formatJobsStateFile()" style="margin-left: 10px;">
+                        <button type="button" class="btn btn-secondary" onclick="formatJobsStateFile()"
+                            style="margin-left: 10px;">
                             <i class="fas fa-code"></i> Format JSON
                         </button>
                     </div>
@@ -480,7 +492,8 @@
             <!-- Live Logs Section -->
             <div id="logsSection" class="section status-section">
                 <h2><i class="fas fa-file-alt"></i> Live Logs (Last 10 lines)</h2>
-                <div id="liveLogs" style="background: #1e1e1e; color: #00ff00; padding: 15px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 12px; max-height: 300px; overflow-y: auto;">
+                <div id="liveLogs"
+                    style="background: #1e1e1e; color: #00ff00; padding: 15px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 12px; max-height: 300px; overflow-y: auto;">
                     <div>Waiting for logs...</div>
                 </div>
                 <button type="button" class="btn btn-secondary" onclick="refreshLogs()" style="margin-top: 10px;">
@@ -495,22 +508,26 @@
                     <div class="access-code-item">
                         <div class="access-code-header">
                             <span class="access-code-title">Access Code #1</span>
-                            <button type="button" class="remove-btn" onclick="removeAccessCode(this)" style="display: none;">
+                            <button type="button" class="remove-btn" onclick="removeAccessCode(this)"
+                                style="display: none;">
                                 <i class="fas fa-trash"></i> Remove
                             </button>
                         </div>
                         <div class="form-group">
                             <label>Access Code:</label>
-                            <input type="text" class="form-control access-code-input" placeholder="Enter access code (e.g., 74974423)">
+                            <input type="text" class="form-control access-code-input"
+                                placeholder="Enter access code (e.g., 74974423)">
                         </div>
                         <div class="pin-range">
                             <div class="form-group">
                                 <label>PIN Start:</label>
-                                <input type="number" class="form-control pin-start" placeholder="0000" min="0" max="9999" value="0">
+                                <input type="number" class="form-control pin-start" placeholder="0000" min="0"
+                                    max="9999" value="0">
                             </div>
                             <div class="form-group">
                                 <label>PIN End:</label>
-                                <input type="number" class="form-control pin-end" placeholder="9999" min="0" max="9999" value="9999">
+                                <input type="number" class="form-control pin-end" placeholder="9999" min="0" max="9999"
+                                    value="9999">
                             </div>
                         </div>
                     </div>
@@ -544,18 +561,20 @@
                 <h2><i class="fas fa-shield-alt"></i> Proxies & Cookies Configuration</h2>
                 <div class="form-group">
                     <label>Proxies (one per line, leave empty for no proxy):</label>
-                    <textarea id="proxiesConfig" class="form-control" rows="5" placeholder="http://proxy1:port&#10;http://proxy2:port&#10;http://proxy3:port">
-
-
+                    <textarea id="proxiesConfig" class="form-control" rows="10"
+                        placeholder="http://proxy1:port&#10;http://proxy2:port&#10;http://proxy3:port">
 </textarea>
-                    <small style="color: #666; font-size: 12px;">Leave empty lines for no proxy. Each worker will use a different proxy.</small>
+                    <small style="color: #666; font-size: 12px;">Leave empty lines for no proxy. Each worker will use a
+                        different proxy.</small>
                 </div>
                 <div class="form-group">
                     <label>Cookies (one per line) - REQUIRED:</label>
-                    <textarea id="cookiesConfig" class="form-control" rows="5" placeholder="cookie1=value1; session=abc123&#10;cookie2=value2; session=def456">_ga=GA1.2.2004863075.1749788627; ASP.NET_SessionId=kkmvt2y4ni0d4bp1sg0vz3xf; AWSELB=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9F2459D1D823108D586FB065E7B5F9002AD22EB5161F2C7AB3014A70051CE4FA39D6AA5C0E88A842A861D33DC4EA44715; AWSELBCORS=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9F2459D1D823108D586FB065E7B5F9002AD22EB5161F2C7AB3014A70051CE4FA39D6AA5C0E88A842A861D33DC4EA44715; _gid=GA1.2.756149190.1750037918; ASPSESSIONIDCQDCDADQ=EMMPDBIDOPDCKJKJCDCMKLBJ; _gat=1
+                    <textarea id="cookiesConfig" class="form-control" wrap="off" rows="10"
+                        placeholder="cookie1=value1; session=abc123&#10;cookie2=value2; session=def456">_ga=GA1.2.2004863075.1749788627; ASP.NET_SessionId=kkmvt2y4ni0d4bp1sg0vz3xf; AWSELB=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9F2459D1D823108D586FB065E7B5F9002AD22EB5161F2C7AB3014A70051CE4FA39D6AA5C0E88A842A861D33DC4EA44715; AWSELBCORS=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9F2459D1D823108D586FB065E7B5F9002AD22EB5161F2C7AB3014A70051CE4FA39D6AA5C0E88A842A861D33DC4EA44715; _gid=GA1.2.756149190.1750037918; ASPSESSIONIDCQDCDADQ=EMMPDBIDOPDCKJKJCDCMKLBJ; _gat=1
 ASPSESSIONIDCQDCDADQ=FMMPDBIDMJCOKDIBPHJPDCOP; AWSELB=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9630A4EB55147521A4CC93077CC30C2F8ED0CDD21FDE9E146F00EB73527DB00B97FD4E580278805751D3836308F6F276B; AWSELBCORS=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9630A4EB55147521A4CC93077CC30C2F8ED0CDD21FDE9E146F00EB73527DB00B97FD4E580278805751D3836308F6F276B; ASP.NET_SessionId=jdjtcrz3ldwqknn0la2hglta; _ga=GA1.2.1880294636.1750065908; _gid=GA1.2.166709486.1750065908; _gat=1
 ASPSESSIONIDCQDCDADQ=FMMPDBIDMJCOKDIBPHJPDCOP; AWSELB=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9630A4EB55147521A4CC93077CC30C2F8ED0CDD21FDE9E146F00EB73527DB00B97FD4E580278805751D3836308F6F276B; AWSELBCORS=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9630A4EB55147521A4CC93077CC30C2F8ED0CDD21FDE9E146F00EB73527DB00B97FD4E580278805751D3836308F6F276B; ASP.NET_SessionId=jdjtcrz3ldwqknn0la2hglta; _ga=GA1.2.1880294636.1750065908; _gid=GA1.2.166709486.1750065908; _gat=1; signInLangTrackEvent=50250189300514</textarea>
-                    <small style="color: #666; font-size: 12px;">Each worker will use a different cookie. Add more cookies for better rotation.</small>
+                    <small style="color: #666; font-size: 12px;">Each worker will use a different cookie. Add more
+                        cookies for better rotation.</small>
                 </div>
             </div>
 
@@ -563,7 +582,8 @@ ASPSESSIONIDCQDCDADQ=FMMPDBIDMJCOKDIBPHJPDCOP; AWSELB=1BB79F7B04C9CBC0EF6C78B167
             <div class="section">
                 <h2>
                     <i class="fas fa-sliders-h"></i> Advanced Settings
-                    <button type="button" class="btn btn-secondary" onclick="toggleAdvanced()" style="margin-left: auto; font-size: 12px;">
+                    <button type="button" class="btn btn-secondary" onclick="toggleAdvanced()"
+                        style="margin-left: auto; font-size: 12px;">
                         <i class="fas fa-chevron-down" id="advancedIcon"></i> Toggle
                     </button>
                 </h2>
@@ -575,11 +595,13 @@ ASPSESSIONIDCQDCDADQ=FMMPDBIDMJCOKDIBPHJPDCOP; AWSELB=1BB79F7B04C9CBC0EF6C78B167
                         </div>
                         <div class="form-group">
                             <label>Retry Delay (ms):</label>
-                            <input type="number" id="retryDelay" class="form-control" min="100" max="10000" value="3000">
+                            <input type="number" id="retryDelay" class="form-control" min="100" max="10000"
+                                value="3000">
                         </div>
                         <div class="form-group">
                             <label>Delay Between PINs (ms):</label>
-                            <input type="number" id="delayBetweenPins" class="form-control" min="0" max="5000" value="100">
+                            <input type="number" id="delayBetweenPins" class="form-control" min="0" max="5000"
+                                value="100">
                         </div>
                     </div>
                 </div>
@@ -587,16 +609,16 @@ ASPSESSIONIDCQDCDADQ=FMMPDBIDMJCOKDIBPHJPDCOP; AWSELB=1BB79F7B04C9CBC0EF6C78B167
 
             <!-- Start Button -->
             <button type="button" id="startBtn" class="btn btn-success" onclick="startPinChecker()">
-                <i class="fas fa-play"></i> Start PIN Checking
+                <i class="fas fa-play"></i> Start
             </button>
 
             <!-- Alert Messages -->
             <div id="alertContainer"></div>
         </div>
 
-        <div class="footer">
+        <!-- <div class="footer">
             <p>&copy; 2024 Brastel PIN Checker - Web Interface v1.0</p>
-        </div>
+        </div> -->
     </div>
 
     <script>
@@ -735,7 +757,7 @@ ASPSESSIONIDCQDCDADQ=FMMPDBIDMJCOKDIBPHJPDCOP; AWSELB=1BB79F7B04C9CBC0EF6C78B167
             return true;
         }
 
-                function collectFormData() {
+        function collectFormData() {
             const accessCodeInputs = document.querySelectorAll('.access-code-input');
             const pinStarts = document.querySelectorAll('.pin-start');
             const pinEnds = document.querySelectorAll('.pin-end');
@@ -752,10 +774,13 @@ ASPSESSIONIDCQDCDADQ=FMMPDBIDMJCOKDIBPHJPDCOP; AWSELB=1BB79F7B04C9CBC0EF6C78B167
             }
 
             // Collect proxies and cookies
-            const proxiesText = document.getElementById('proxiesConfig').value.trim();
+            const proxiesText = document.getElementById('proxiesConfig').value;
             const cookiesText = document.getElementById('cookiesConfig').value.trim();
 
-            const proxies = proxiesText ? proxiesText.split('\n').map(p => p.trim()).filter(p => p) : [''];
+            // const proxies = proxiesText ? proxiesText.split('\n').map(p => p.trim()) : [''];
+            const proxies = proxiesText ? proxiesText.split('\n') : [''];
+            console.log("proxies", proxies);
+
             const cookies = cookiesText ? cookiesText.split('\n').map(c => c.trim()).filter(c => c) : [];
 
             if (cookies.length === 0) {
@@ -775,12 +800,13 @@ ASPSESSIONIDCQDCDADQ=FMMPDBIDMJCOKDIBPHJPDCOP; AWSELB=1BB79F7B04C9CBC0EF6C78B167
             return { accessCodes, settings, proxies, cookies };
         }
 
-                async function startPinChecker() {
+        async function startPinChecker() {
             if (!validateForm()) {
                 return;
             }
 
             const formData = collectFormData();
+            return;
             if (!formData) {
                 return; // Validation failed
             }
@@ -804,7 +830,7 @@ ASPSESSIONIDCQDCDADQ=FMMPDBIDMJCOKDIBPHJPDCOP; AWSELB=1BB79F7B04C9CBC0EF6C78B167
 
                 if (result.success) {
                     currentJobId = result.jobId;
-                    showAlert(`PIN checker started successfully! Job ID: ${result.jobId}`, 'success');
+                    showAlert(`Started successfully! Job ID: ${result.jobId}`, 'success');
                     showStatusSection();
                     showLogsSection();
                     startStatusPolling();
@@ -820,7 +846,7 @@ ASPSESSIONIDCQDCDADQ=FMMPDBIDMJCOKDIBPHJPDCOP; AWSELB=1BB79F7B04C9CBC0EF6C78B167
             } catch (error) {
                 showAlert(`Error: ${error.message}`, 'error');
                 startBtn.disabled = false;
-                startBtn.innerHTML = '<i class="fas fa-play"></i> Start PIN Checking';
+                startBtn.innerHTML = '<i class="fas fa-play"></i> Start';
             }
         }
 
@@ -892,18 +918,18 @@ ASPSESSIONIDCQDCDADQ=FMMPDBIDMJCOKDIBPHJPDCOP; AWSELB=1BB79F7B04C9CBC0EF6C78B167
 
                 statusContainer.innerHTML = statusHTML;
 
-                                // If job is completed or error, stop polling and reset button
+                // If job is completed or error, stop polling and reset button
                 if (job.status === 'completed' || job.status === 'error') {
                     clearInterval(statusInterval);
                     stopLogsPolling();
                     const startBtn = document.getElementById('startBtn');
                     startBtn.disabled = false;
-                    startBtn.innerHTML = '<i class="fas fa-play"></i> Start PIN Checking';
+                    startBtn.innerHTML = '<i class="fas fa-play"></i> Start';
 
                     if (job.status === 'completed') {
-                        showAlert('PIN checking completed successfully! Check the Data folder for results.', 'success');
+                        showAlert('Completed successfully! Check the Data folder for results.', 'success');
                     } else if (job.status === 'error') {
-                        showAlert(`PIN checking failed: ${job.error}`, 'error');
+                        showAlert(`Failed: ${job.error}`, 'error');
                     }
 
                     refreshJobs(); // Refresh job list when job status changes
@@ -1046,7 +1072,7 @@ ASPSESSIONIDCQDCDADQ=FMMPDBIDMJCOKDIBPHJPDCOP; AWSELB=1BB79F7B04C9CBC0EF6C78B167
             }
         }
 
-                // Auto-restore running job state on page load
+        // Auto-restore running job state on page load
         async function autoRestoreRunningJob() {
             try {
                 const response = await fetch('/api/jobs');
@@ -1217,7 +1243,7 @@ ASPSESSIONIDCQDCDADQ=FMMPDBIDMJCOKDIBPHJPDCOP; AWSELB=1BB79F7B04C9CBC0EF6C78B167
         }
 
         // Initialize the form
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             updateRemoveButtons();
             refreshJobs(); // Load existing jobs on page load
 
@@ -1229,4 +1255,5 @@ ASPSESSIONIDCQDCDADQ=FMMPDBIDMJCOKDIBPHJPDCOP; AWSELB=1BB79F7B04C9CBC0EF6C78B167
         });
     </script>
 </body>
+
 </html>
