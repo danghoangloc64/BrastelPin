@@ -93,7 +93,6 @@ const CONFIG = {
   // API endpoints and headers
   api: {
     url: 'https://www.brastel.com/web/WIMS/Manager.aspx',
-    proxyUrl: 'https://tmproxy.com/api/proxy/get-new-proxy',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
       'Accept': 'application/json, text/javascript, */*; q=0.01',
