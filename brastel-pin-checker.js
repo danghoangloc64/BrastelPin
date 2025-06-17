@@ -861,7 +861,16 @@ class SingleAccessCodeChecker {
     const workers = [];
 
     for (let i = 0; i < CONFIG.concurrentWorkers; i++) {
-      const worker = new Worker(i + 1, this.logger, this.proxyManager, this.pinChecker, this.fileManager);
+      // Create a separate PinChecker instance for each worker to avoid shared state
+      const workerPinChecker = new PinChecker(this.logger, this.proxyManager, this.fileManager, this.accessCode);
+
+      // Share the 'found' state from the main pinChecker so all workers can see when to stop
+      Object.defineProperty(workerPinChecker, 'found', {
+        get: () => this.pinChecker.found,
+        set: (value) => { this.pinChecker.found = value; }
+      });
+
+      const worker = new Worker(i + 1, this.logger, this.proxyManager, workerPinChecker, this.fileManager);
       const cookie = CONFIG.cookies[i] || CONFIG.cookies[0]; // Fallback to first cookie
       const staticProxy = CONFIG.proxies[i] || CONFIG.proxies[0]; // Fallback to first proxy
 
