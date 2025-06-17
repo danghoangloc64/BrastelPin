@@ -82,20 +82,20 @@ app.post('/api/start-checker', async (req, res) => {
       success: true,
       jobId,
       message: 'PIN checker started successfully',
-              config: {
-          accessCodes: CONFIG.accessCodes,
-          concurrentWorkers: CONFIG.concurrentWorkers,
-          maxUndefinedResults: CONFIG.maxUndefinedResults,
-          randomProcessing: CONFIG.randomProcessing,
-          proxiesCount: CONFIG.proxies.length,
-          cookiesCount: CONFIG.cookies.length
-        }
-      });
+      config: {
+        accessCodes: CONFIG.accessCodes,
+        concurrentWorkers: CONFIG.concurrentWorkers,
+        maxUndefinedResults: CONFIG.maxUndefinedResults,
+        randomProcessing: CONFIG.randomProcessing,
+        proxiesCount: CONFIG.proxies.length,
+        cookiesCount: CONFIG.cookies.length
+      }
+    });
 
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 app.get('/api/job-status/:jobId', (req, res) => {
   const { jobId } = req.params;
