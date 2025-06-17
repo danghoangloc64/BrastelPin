@@ -407,13 +407,43 @@ class FileManager {
    * Get statistics
    * @returns {Object} Statistics object
    */
+  /**
+   * Check if there are any valid PINs that are not blacklisted
+   * @returns {boolean} True if there are valid non-blacklisted PINs
+   */
+  hasValidNonBlacklistedPins() {
+    const validPins = this.getValidPins();
+    if (validPins.length === 0) {
+      return false;
+    }
+
+    // Check if any valid PIN is not in blacklist
+    return validPins.some(validPin => {
+      return !this.isBlacklisted(validPin.pin);
+    });
+  }
+
+  /**
+   * Get valid PINs that are not blacklisted
+   * @returns {Array} Array of valid non-blacklisted PINs
+   */
+  getValidNonBlacklistedPins() {
+    const validPins = this.getValidPins();
+    return validPins.filter(validPin => {
+      return !this.isBlacklisted(validPin.pin);
+    });
+  }
+
   getStatistics() {
+    const validNonBlacklisted = this.getValidNonBlacklistedPins();
     return {
       sentPinsCount: this.cache.get('sentPins')?.size || 0,
       blacklistPinsCount: this.cache.get('blacklistPins')?.size || 0,
       validPinsCount: this.getValidPins().length,
+      validNonBlacklistedCount: validNonBlacklisted.length,
       blacklistedPins: this.getBlacklistPins(),
-      validPins: this.getValidPins()
+      validPins: this.getValidPins(),
+      validNonBlacklistedPins: validNonBlacklisted
     };
   }
 }
@@ -877,13 +907,18 @@ class SingleAccessCodeChecker {
     this.logger.info(`Total PINs sent: ${stats.sentPinsCount}`);
     this.logger.info(`Blacklisted PINs: ${stats.blacklistPinsCount}`);
     this.logger.info(`Valid PINs found: ${stats.validPinsCount}`);
+    this.logger.info(`Valid PINs (not blacklisted): ${stats.validNonBlacklistedCount}`);
 
     if (stats.blacklistedPins.length > 0) {
       this.logger.info(`Blacklisted: ${stats.blacklistedPins.join(', ')}`);
     }
 
     if (stats.validPins.length > 0) {
-      this.logger.success(`Valid PINs: ${stats.validPins.map(p => p.pin).join(', ')}`);
+      this.logger.success(`All Valid PINs: ${stats.validPins.map(p => p.pin).join(', ')}`);
+    }
+
+    if (stats.validNonBlacklistedPins.length > 0) {
+      this.logger.found(`Valid PINs (not blacklisted): ${stats.validNonBlacklistedPins.map(p => p.pin).join(', ')}`);
     }
 
     this.logger.info('Files location:');
@@ -922,6 +957,19 @@ class SingleAccessCodeChecker {
 
     // Display current statistics
     this.displayStats();
+
+    // Check if we already have valid non-blacklisted PINs
+    if (this.fileManager.hasValidNonBlacklistedPins()) {
+      const validPins = this.fileManager.getValidNonBlacklistedPins();
+      this.logger.success(`AccessCode ${this.accessCode} already has valid PIN(s): ${validPins.map(p => p.pin).join(', ')}`);
+      this.logger.info('These PINs are not blacklisted, so processing is complete for this accessCode.');
+      this.logger.info('If you want to continue searching, add these PINs to blacklist_pins.json');
+
+      // Mark as found to stop any further processing
+      this.pinChecker.found = true;
+
+      return true; // Continue to next accessCode
+    }
 
     const pins = this.generatePinRange();
     const pinBatches = this.distributePins(pins);
