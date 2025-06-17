@@ -1,0 +1,215 @@
+[2025-06-17T04:35:50.953Z] 🔍 [74974423] Created accessCode folder: Data\74974423
+[2025-06-17T04:35:50.955Z] 🔍 [74974423] Created tracking file for 74974423: Data\74974423\sent_pins_history.json
+[2025-06-17T04:35:50.956Z] 🔍 [74974423] Created tracking file for 74974423: Data\74974423\blacklist_pins.json
+[2025-06-17T04:35:50.958Z] 🔍 [74974423] Created tracking file for 74974423: Data\74974423\valid_pins_found.json
+[2025-06-17T04:35:50.958Z] 🔍 [74974423] Starting PIN Checker for AccessCode: 74974423
+[2025-06-17T04:35:50.959Z] 🔍 [74974423] PIN Range: 5410 - 9999
+[2025-06-17T04:35:50.959Z] 🔍 [74974423] Concurrent Workers: 1
+[2025-06-17T04:35:50.960Z] 🔍 [74974423] === STATISTICS ===
+[2025-06-17T04:35:50.961Z] 🔍 [74974423] Access Code: 74974423
+[2025-06-17T04:35:50.966Z] 🔍 [74974423] PIN Range: 5410 - 9999
+[2025-06-17T04:35:50.966Z] 🔍 [74974423] Total PINs sent: 0
+[2025-06-17T04:35:50.967Z] 🔍 [74974423] Blacklisted PINs: 0
+[2025-06-17T04:35:50.967Z] 🔍 [74974423] Valid PINs found: 0
+[2025-06-17T04:35:50.967Z] 🔍 [74974423] Files location:
+[2025-06-17T04:35:50.968Z] 🔍 [74974423] - Sent PINs: Data\74974423\sent_pins_history.json
+[2025-06-17T04:35:50.968Z] 🔍 [74974423] - Blacklist: Data\74974423\blacklist_pins.json
+[2025-06-17T04:35:50.968Z] 🔍 [74974423] - Valid PINs: Data\74974423\valid_pins_found.json
+[2025-06-17T04:36:07.082Z] 🔍 [74974423] Worker 1 - PIN: 5410 | Result: 100 - SPC number not found
+[2025-06-17T04:36:13.941Z] 🔍 [74974423] Worker 1 - PIN: 5411 | Result: 100 - SPC number not found
+[2025-06-17T04:36:19.317Z] 🔍 [74974423] Worker 1 - PIN: 5412 | Result: 100 - SPC number not found
+[2025-06-17T04:36:24.494Z] 🔍 [74974423] Worker 1 - PIN: 5413 | Result: 100 - SPC number not found
+[2025-06-17T04:36:28.330Z] 🔍 [74974423] Worker 1 - PIN: 5414 | Result: 0 - Successfully retrieved
+[2025-06-17T04:36:28.331Z] 🎯 [74974423] Worker 1 - FOUND VALID PIN: 5414 (74974423)
+[2025-06-17T04:36:28.334Z] 🎯 [74974423] Saved valid PIN for 74974423 to file: 5414
+[2025-06-17T04:36:28.335Z] ✅ [74974423] Completed processing accessCode: 74974423
+[2025-06-17T04:36:28.336Z] 🔍 [74974423] === STATISTICS ===
+[2025-06-17T04:36:28.337Z] 🔍 [74974423] Access Code: 74974423
+[2025-06-17T04:36:28.338Z] 🔍 [74974423] PIN Range: 5410 - 9999
+[2025-06-17T04:36:28.339Z] 🔍 [74974423] Total PINs sent: 5
+[2025-06-17T04:36:28.339Z] 🔍 [74974423] Blacklisted PINs: 0
+[2025-06-17T04:36:28.340Z] 🔍 [74974423] Valid PINs found: 1
+[2025-06-17T04:36:28.340Z] ✅ [74974423] Valid PINs: 5414
+[2025-06-17T04:36:28.341Z] 🔍 [74974423] Files location:
+[2025-06-17T04:36:28.341Z] 🔍 [74974423] - Sent PINs: Data\74974423\sent_pins_history.json
+[2025-06-17T04:36:28.342Z] 🔍 [74974423] - Blacklist: Data\74974423\blacklist_pins.json
+[2025-06-17T04:36:28.342Z] 🔍 [74974423] - Valid PINs: Data\74974423\valid_pins_found.json
+[2025-06-17T04:56:35.801Z] 🔍 [74974423] Starting PIN Checker for AccessCode: 74974423
+[2025-06-17T04:56:35.803Z] 🔍 [74974423] PIN Range: 5410 - 9999
+[2025-06-17T04:56:35.816Z] 🔍 [74974423] Concurrent Workers: 1
+[2025-06-17T04:56:35.830Z] 🔍 [74974423] === STATISTICS ===
+[2025-06-17T04:56:35.839Z] 🔍 [74974423] Access Code: 74974423
+[2025-06-17T04:56:35.840Z] 🔍 [74974423] PIN Range: 5410 - 9999
+[2025-06-17T04:56:35.840Z] 🔍 [74974423] Total PINs sent: 5
+[2025-06-17T04:56:35.841Z] 🔍 [74974423] Blacklisted PINs: 0
+[2025-06-17T04:56:35.842Z] 🔍 [74974423] Valid PINs found: 1
+[2025-06-17T04:56:35.843Z] ✅ [74974423] Valid PINs: 5414
+[2025-06-17T04:56:35.843Z] 🔍 [74974423] Files location:
+[2025-06-17T04:56:35.844Z] 🔍 [74974423] - Sent PINs: Data\74974423\sent_pins_history.json
+[2025-06-17T04:56:35.845Z] 🔍 [74974423] - Blacklist: Data\74974423\blacklist_pins.json
+[2025-06-17T04:56:35.846Z] 🔍 [74974423] - Valid PINs: Data\74974423\valid_pins_found.json
+[2025-06-17T04:56:35.848Z] ⏭️ [74974423] Worker 1 - Skipping already sent PIN: 5410
+[2025-06-17T04:56:35.849Z] ⏭️ [74974423] Worker 1 - Skipping already sent PIN: 5411
+[2025-06-17T04:56:35.850Z] ⏭️ [74974423] Worker 1 - Skipping already sent PIN: 5412
+[2025-06-17T04:56:35.851Z] ⏭️ [74974423] Worker 1 - Skipping already sent PIN: 5413
+[2025-06-17T04:56:35.851Z] ⏭️ [74974423] Worker 1 - Skipping already sent PIN: 5414
+[2025-06-17T04:56:35.852Z] 🔍 [74974423] Worker 1 - Total unsent PINs available: 4585
+[2025-06-17T04:56:35.853Z] 🔍 [74974423] Worker 1 - Using shuffle random selection mode
+[2025-06-17T04:56:35.855Z] 🔍 [74974423] Worker 1 - Processing 4585 PINs in random order
+[2025-06-17T04:56:35.856Z] 🔍 [74974423] Worker 1 - Random PIN 1/4585: 7971
+[2025-06-17T04:56:43.467Z] 🔍 [74974423] Worker 1 - PIN: 7971 | Result: 100 - SPC number not found
+[2025-06-17T04:56:43.577Z] 🔍 [74974423] Worker 1 - Random PIN 2/4585: 5760
+[2025-06-17T04:56:50.332Z] 🔍 [74974423] Worker 1 - PIN: 5760 | Result: 100 - SPC number not found
+[2025-06-17T04:56:50.437Z] 🔍 [74974423] Worker 1 - Random PIN 3/4585: 7702
+[2025-06-17T05:03:32.335Z] 🔍 [74974423] Starting PIN Checker for AccessCode: 74974423
+[2025-06-17T05:03:32.337Z] 🔍 [74974423] PIN Range: 5410 - 9999
+[2025-06-17T05:03:32.348Z] 🔍 [74974423] Concurrent Workers: 1
+[2025-06-17T05:03:32.359Z] 🔍 [74974423] === STATISTICS ===
+[2025-06-17T05:03:32.367Z] 🔍 [74974423] Access Code: 74974423
+[2025-06-17T05:03:32.367Z] 🔍 [74974423] PIN Range: 5410 - 9999
+[2025-06-17T05:03:32.368Z] 🔍 [74974423] Total PINs sent: 7
+[2025-06-17T05:03:32.369Z] 🔍 [74974423] Blacklisted PINs: 0
+[2025-06-17T05:03:32.369Z] 🔍 [74974423] Valid PINs found: 1
+[2025-06-17T05:03:32.369Z] 🔍 [74974423] Valid PINs (not blacklisted): 1
+[2025-06-17T05:03:32.370Z] ✅ [74974423] All Valid PINs: 5414
+[2025-06-17T05:03:32.370Z] 🎯 [74974423] Valid PINs (not blacklisted): 5414
+[2025-06-17T05:03:32.371Z] 🔍 [74974423] Files location:
+[2025-06-17T05:03:32.371Z] 🔍 [74974423] - Sent PINs: Data\74974423\sent_pins_history.json
+[2025-06-17T05:03:32.372Z] 🔍 [74974423] - Blacklist: Data\74974423\blacklist_pins.json
+[2025-06-17T05:03:32.372Z] 🔍 [74974423] - Valid PINs: Data\74974423\valid_pins_found.json
+[2025-06-17T05:03:32.373Z] ✅ [74974423] AccessCode 74974423 already has valid PIN(s): 5414
+[2025-06-17T05:03:32.373Z] 🔍 [74974423] These PINs are not blacklisted, so processing is complete for this accessCode.
+[2025-06-17T05:03:32.374Z] 🔍 [74974423] If you want to continue searching, add these PINs to blacklist_pins.json
+[2025-06-17T05:04:18.081Z] 🔍 [74974423] Starting PIN Checker for AccessCode: 74974423
+[2025-06-17T05:04:18.082Z] 🔍 [74974423] PIN Range: 5410 - 9999
+[2025-06-17T05:04:18.098Z] 🔍 [74974423] Concurrent Workers: 1
+[2025-06-17T05:04:18.104Z] 🔍 [74974423] === STATISTICS ===
+[2025-06-17T05:04:18.109Z] 🔍 [74974423] Access Code: 74974423
+[2025-06-17T05:04:18.110Z] 🔍 [74974423] PIN Range: 5410 - 9999
+[2025-06-17T05:04:18.111Z] 🔍 [74974423] Total PINs sent: 7
+[2025-06-17T05:04:18.111Z] 🔍 [74974423] Blacklisted PINs: 0
+[2025-06-17T05:04:18.112Z] 🔍 [74974423] Valid PINs found: 1
+[2025-06-17T05:04:18.112Z] 🔍 [74974423] Valid PINs (not blacklisted): 1
+[2025-06-17T05:04:18.113Z] ✅ [74974423] All Valid PINs: 5414
+[2025-06-17T05:04:18.113Z] 🎯 [74974423] Valid PINs (not blacklisted): 5414
+[2025-06-17T05:04:18.114Z] 🔍 [74974423] Files location:
+[2025-06-17T05:04:18.115Z] 🔍 [74974423] - Sent PINs: Data\74974423\sent_pins_history.json
+[2025-06-17T05:04:18.115Z] 🔍 [74974423] - Blacklist: Data\74974423\blacklist_pins.json
+[2025-06-17T05:04:18.116Z] 🔍 [74974423] - Valid PINs: Data\74974423\valid_pins_found.json
+[2025-06-17T05:04:18.117Z] ✅ [74974423] AccessCode 74974423 already has valid PIN(s): 5414
+[2025-06-17T05:04:18.117Z] 🔍 [74974423] These PINs are not blacklisted, so processing is complete for this accessCode.
+[2025-06-17T05:04:18.118Z] 🔍 [74974423] If you want to continue searching, add these PINs to blacklist_pins.json
+[2025-06-17T05:05:09.921Z] 🔍 [74974423] Starting PIN Checker for AccessCode: 74974423
+[2025-06-17T05:05:09.922Z] 🔍 [74974423] PIN Range: 5410 - 9999
+[2025-06-17T05:05:09.932Z] 🔍 [74974423] Concurrent Workers: 1
+[2025-06-17T05:05:09.940Z] 🔍 [74974423] === STATISTICS ===
+[2025-06-17T05:05:09.954Z] 🔍 [74974423] Access Code: 74974423
+[2025-06-17T05:05:09.954Z] 🔍 [74974423] PIN Range: 5410 - 9999
+[2025-06-17T05:05:09.955Z] 🔍 [74974423] Total PINs sent: 7
+[2025-06-17T05:05:09.955Z] 🔍 [74974423] Blacklisted PINs: 0
+[2025-06-17T05:05:09.956Z] 🔍 [74974423] Valid PINs found: 1
+[2025-06-17T05:05:09.956Z] 🔍 [74974423] Valid PINs (not blacklisted): 1
+[2025-06-17T05:05:09.956Z] ✅ [74974423] All Valid PINs: 5414
+[2025-06-17T05:05:09.957Z] 🎯 [74974423] Valid PINs (not blacklisted): 5414
+[2025-06-17T05:05:09.957Z] 🔍 [74974423] Files location:
+[2025-06-17T05:05:09.958Z] 🔍 [74974423] - Sent PINs: Data\74974423\sent_pins_history.json
+[2025-06-17T05:05:09.958Z] 🔍 [74974423] - Blacklist: Data\74974423\blacklist_pins.json
+[2025-06-17T05:05:09.958Z] 🔍 [74974423] - Valid PINs: Data\74974423\valid_pins_found.json
+[2025-06-17T05:05:09.959Z] ✅ [74974423] AccessCode 74974423 already has valid PIN(s): 5414
+[2025-06-17T05:05:09.959Z] 🔍 [74974423] These PINs are not blacklisted, so processing is complete for this accessCode.
+[2025-06-17T05:05:09.960Z] 🔍 [74974423] If you want to continue searching, add these PINs to blacklist_pins.json
+[2025-06-17T05:05:50.586Z] 🔍 [74974423] Starting PIN Checker for AccessCode: 74974423
+[2025-06-17T05:05:50.589Z] 🔍 [74974423] PIN Range: 5410 - 9999
+[2025-06-17T05:05:50.595Z] 🔍 [74974423] Concurrent Workers: 1
+[2025-06-17T05:05:50.607Z] 🔍 [74974423] === STATISTICS ===
+[2025-06-17T05:05:50.612Z] 🔍 [74974423] Access Code: 74974423
+[2025-06-17T05:05:50.613Z] 🔍 [74974423] PIN Range: 5410 - 9999
+[2025-06-17T05:05:50.613Z] 🔍 [74974423] Total PINs sent: 7
+[2025-06-17T05:05:50.613Z] 🔍 [74974423] Blacklisted PINs: 0
+[2025-06-17T05:05:50.614Z] 🔍 [74974423] Valid PINs found: 1
+[2025-06-17T05:05:50.615Z] 🔍 [74974423] Valid PINs (not blacklisted): 1
+[2025-06-17T05:05:50.615Z] ✅ [74974423] All Valid PINs: 5414
+[2025-06-17T05:05:50.616Z] 🎯 [74974423] Valid PINs (not blacklisted): 5414
+[2025-06-17T05:05:50.616Z] 🔍 [74974423] Files location:
+[2025-06-17T05:05:50.617Z] 🔍 [74974423] - Sent PINs: Data\74974423\sent_pins_history.json
+[2025-06-17T05:05:50.617Z] 🔍 [74974423] - Blacklist: Data\74974423\blacklist_pins.json
+[2025-06-17T05:05:50.618Z] 🔍 [74974423] - Valid PINs: Data\74974423\valid_pins_found.json
+[2025-06-17T05:05:50.618Z] ✅ [74974423] AccessCode 74974423 already has valid PIN(s): 5414
+[2025-06-17T05:05:50.618Z] 🔍 [74974423] These PINs are not blacklisted, so processing is complete for this accessCode.
+[2025-06-17T05:05:50.619Z] 🔍 [74974423] If you want to continue searching, add these PINs to blacklist_pins.json
+[2025-06-17T05:06:24.553Z] 🔍 [74974423] Starting PIN Checker for AccessCode: 74974423
+[2025-06-17T05:06:24.554Z] 🔍 [74974423] PIN Range: 5410 - 9999
+[2025-06-17T05:06:24.559Z] 🔍 [74974423] Concurrent Workers: 1
+[2025-06-17T05:06:24.573Z] 🔍 [74974423] === STATISTICS ===
+[2025-06-17T05:06:24.578Z] 🔍 [74974423] Access Code: 74974423
+[2025-06-17T05:06:24.578Z] 🔍 [74974423] PIN Range: 5410 - 9999
+[2025-06-17T05:06:24.579Z] 🔍 [74974423] Total PINs sent: 7
+[2025-06-17T05:06:24.579Z] 🔍 [74974423] Blacklisted PINs: 0
+[2025-06-17T05:06:24.580Z] 🔍 [74974423] Valid PINs found: 1
+[2025-06-17T05:06:24.580Z] 🔍 [74974423] Valid PINs (not blacklisted): 1
+[2025-06-17T05:06:24.580Z] ✅ [74974423] All Valid PINs: 5414
+[2025-06-17T05:06:24.581Z] 🎯 [74974423] Valid PINs (not blacklisted): 5414
+[2025-06-17T05:06:24.582Z] 🔍 [74974423] Files location:
+[2025-06-17T05:06:24.582Z] 🔍 [74974423] - Sent PINs: Data\74974423\sent_pins_history.json
+[2025-06-17T05:06:24.583Z] 🔍 [74974423] - Blacklist: Data\74974423\blacklist_pins.json
+[2025-06-17T05:06:24.583Z] 🔍 [74974423] - Valid PINs: Data\74974423\valid_pins_found.json
+[2025-06-17T05:06:24.584Z] ✅ [74974423] AccessCode 74974423 already has valid PIN(s): 5414
+[2025-06-17T05:06:24.584Z] 🔍 [74974423] These PINs are not blacklisted, so processing is complete for this accessCode.
+[2025-06-17T05:06:24.585Z] 🔍 [74974423] If you want to continue searching, add these PINs to blacklist_pins.json
+[2025-06-17T05:07:28.371Z] 🔍 [74974423] Starting PIN Checker for AccessCode: 74974423
+[2025-06-17T05:07:28.374Z] 🔍 [74974423] PIN Range: 5410 - 9999
+[2025-06-17T05:07:28.392Z] 🔍 [74974423] Concurrent Workers: 1
+[2025-06-17T05:07:28.404Z] 🔍 [74974423] === STATISTICS ===
+[2025-06-17T05:07:28.414Z] 🔍 [74974423] Access Code: 74974423
+[2025-06-17T05:07:28.415Z] 🔍 [74974423] PIN Range: 5410 - 9999
+[2025-06-17T05:07:28.416Z] 🔍 [74974423] Total PINs sent: 7
+[2025-06-17T05:07:28.417Z] 🔍 [74974423] Blacklisted PINs: 0
+[2025-06-17T05:07:28.417Z] 🔍 [74974423] Valid PINs found: 1
+[2025-06-17T05:07:28.418Z] 🔍 [74974423] Valid PINs (not blacklisted): 1
+[2025-06-17T05:07:28.418Z] ✅ [74974423] All Valid PINs: 5414
+[2025-06-17T05:07:28.419Z] 🎯 [74974423] Valid PINs (not blacklisted): 5414
+[2025-06-17T05:07:28.419Z] 🔍 [74974423] Files location:
+[2025-06-17T05:07:28.420Z] 🔍 [74974423] - Sent PINs: Data\74974423\sent_pins_history.json
+[2025-06-17T05:07:28.420Z] 🔍 [74974423] - Blacklist: Data\74974423\blacklist_pins.json
+[2025-06-17T05:07:28.421Z] 🔍 [74974423] - Valid PINs: Data\74974423\valid_pins_found.json
+[2025-06-17T05:07:28.421Z] ✅ [74974423] AccessCode 74974423 already has valid PIN(s): 5414
+[2025-06-17T05:07:28.421Z] 🔍 [74974423] These PINs are not blacklisted, so processing is complete for this accessCode.
+[2025-06-17T05:07:28.422Z] 🔍 [74974423] If you want to continue searching, add these PINs to blacklist_pins.json
+[2025-06-17T05:58:53.269Z] 🔍 [74974423] Starting PIN Checker for AccessCode: 74974423
+[2025-06-17T05:58:53.270Z] 🔍 [74974423] PIN Range: 5410 - 9999
+[2025-06-17T05:58:53.287Z] 🔍 [74974423] Concurrent Workers: 1
+[2025-06-17T05:58:53.293Z] 🔍 [74974423] === STATISTICS ===
+[2025-06-17T05:58:53.306Z] 🔍 [74974423] Access Code: 74974423
+[2025-06-17T05:58:53.307Z] 🔍 [74974423] PIN Range: 5410 - 9999
+[2025-06-17T05:58:53.307Z] 🔍 [74974423] Total PINs sent: 7
+[2025-06-17T05:58:53.308Z] 🔍 [74974423] Blacklisted PINs: 0
+[2025-06-17T05:58:53.308Z] 🔍 [74974423] Valid PINs found: 1
+[2025-06-17T05:58:53.308Z] 🔍 [74974423] Valid PINs (not blacklisted): 1
+[2025-06-17T05:58:53.309Z] ✅ [74974423] All Valid PINs: 5414
+[2025-06-17T05:58:53.309Z] 🎯 [74974423] Valid PINs (not blacklisted): 5414
+[2025-06-17T05:58:53.309Z] 🔍 [74974423] Files location:
+[2025-06-17T05:58:53.310Z] 🔍 [74974423] - Sent PINs: Data\74974423\sent_pins_history.json
+[2025-06-17T05:58:53.310Z] 🔍 [74974423] - Blacklist: Data\74974423\blacklist_pins.json
+[2025-06-17T05:58:53.310Z] 🔍 [74974423] - Valid PINs: Data\74974423\valid_pins_found.json
+[2025-06-17T05:58:53.311Z] ✅ [74974423] AccessCode 74974423 already has valid PIN(s): 5414
+[2025-06-17T05:58:53.311Z] 🔍 [74974423] These PINs are not blacklisted, so processing is complete for this accessCode.
+[2025-06-17T05:58:53.311Z] 🔍 [74974423] If you want to continue searching, add these PINs to blacklist_pins.json
+[2025-06-17T06:12:59.708Z] 🔍 [74974423] Starting PIN Checker for AccessCode: 74974423
+[2025-06-17T06:12:59.709Z] 🔍 [74974423] PIN Range: 5410 - 9999
+[2025-06-17T06:12:59.714Z] 🔍 [74974423] Concurrent Workers: 1
+[2025-06-17T06:12:59.730Z] 🔍 [74974423] === STATISTICS ===
+[2025-06-17T06:12:59.735Z] 🔍 [74974423] Access Code: 74974423
+[2025-06-17T06:12:59.736Z] 🔍 [74974423] PIN Range: 5410 - 9999
+[2025-06-17T06:12:59.736Z] 🔍 [74974423] Total PINs sent: 7
+[2025-06-17T06:12:59.736Z] 🔍 [74974423] Blacklisted PINs: 0
+[2025-06-17T06:12:59.737Z] 🔍 [74974423] Valid PINs found: 1
+[2025-06-17T06:12:59.737Z] 🔍 [74974423] Valid PINs (not blacklisted): 1
+[2025-06-17T06:12:59.738Z] ✅ [74974423] All Valid PINs: 5414
+[2025-06-17T06:12:59.738Z] 🎯 [74974423] Valid PINs (not blacklisted): 5414
+[2025-06-17T06:12:59.739Z] 🔍 [74974423] Files location:
+[2025-06-17T06:12:59.739Z] 🔍 [74974423] - Sent PINs: Data\74974423\sent_pins_history.json
+[2025-06-17T06:12:59.740Z] 🔍 [74974423] - Blacklist: Data\74974423\blacklist_pins.json
+[2025-06-17T06:12:59.740Z] 🔍 [74974423] - Valid PINs: Data\74974423\valid_pins_found.json
+[2025-06-17T06:12:59.741Z] ✅ [74974423] AccessCode 74974423 already has valid PIN(s): 5414
+[2025-06-17T06:12:59.742Z] 🔍 [74974423] These PINs are not blacklisted, so processing is complete for this accessCode.
+[2025-06-17T06:12:59.742Z] 🔍 [74974423] If you want to continue searching, add these PINs to blacklist_pins.json

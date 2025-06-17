@@ -75,11 +75,8 @@ const CONFIG = {
 
   // Random processing configuration
   randomProcessing: {
-    enabled: true, // Set to true to enable random PIN selection
-    mode: 'shuffle', // 'shuffle' or 'continuous'
-    maxIterations: null, // Max iterations for continuous mode (null = no limit)
-    delayBetweenPins: 100, // Delay in ms between PIN processing
-    delayBetweenRandomSelections: 200 // Delay in ms between random selections in continuous mode
+    enabled: true, // Set to true to enable random PIN selection (shuffle mode), false for sequential
+    delayBetweenPins: 100 // Delay in ms between PIN processing
   },
 
   // Folder paths
@@ -201,25 +198,7 @@ class Utils {
     return shuffled;
   }
 
-  /**
-   * Get random element from array
-   * @param {Array} array - Array to pick from
-   * @returns {*} Random element
-   */
-  static getRandomElement(array) {
-    return array[Math.floor(Math.random() * array.length)];
-  }
 
-  /**
-   * Get random elements from array
-   * @param {Array} array - Array to pick from
-   * @param {number} count - Number of elements to pick
-   * @returns {Array} Array of random elements
-   */
-  static getRandomElements(array, count) {
-    const shuffled = this.shuffleArray(array);
-    return shuffled.slice(0, Math.min(count, array.length));
-  }
 }
 
 /**
@@ -632,10 +611,14 @@ class PinChecker {
    * @param {Object} result - API response
    * @param {string} pin - PIN being checked
    * @param {number} workerId - Worker ID
+   * @param {string} additionalInfo - Additional logging information (optional)
    * @returns {boolean} True if PIN is valid
    */
-  processResult(result, pin, workerId) {
-    this.logger.info(`Worker ${workerId} - PIN: ${pin} | Result: ${result.result} - ${result.errorMsg}`);
+  processResult(result, pin, workerId, additionalInfo = '') {
+    const logMessage = `Worker ${workerId} - PIN: ${pin} | Result: ${result.result} - ${result.errorMsg}`;
+    const fullMessage = additionalInfo ? `${logMessage} | ${additionalInfo}` : logMessage;
+
+    this.logger.info(fullMessage);
 
     // Reset undefined counter since we got a valid response
     this.resetUndefinedCount();
@@ -663,9 +646,10 @@ class PinChecker {
    * @param {Object} agent - Proxy agent
    * @param {string} cookie - Cookie string
    * @param {number} workerId - Worker ID
+   * @param {string} additionalInfo - Additional logging information (optional)
    * @returns {Promise<boolean>} True if PIN is valid
    */
-  async checkPin(pin, agent, cookie, workerId) {
+  async checkPin(pin, agent, cookie, workerId, additionalInfo = '') {
     for (let attempt = 1; attempt <= CONFIG.maxRetries; attempt++) {
       if (this.shouldStop()) return false;
 
@@ -682,7 +666,7 @@ class PinChecker {
 
         // Mark PIN as sent
         this.fileManager.addSentPin(pin);
-        return this.processResult(result, pin, workerId);
+        return this.processResult(result, pin, workerId, additionalInfo);
 
       } catch (error) {
         this.logger.error(`Worker ${workerId} - Error checking PIN ${pin} (attempt ${attempt}): ${error.message}`);
@@ -725,7 +709,7 @@ class Worker {
   }
 
   /**
-   * Process a list of PINs with random selection
+   * Process a list of PINs (either sequentially or with shuffle random selection)
    * @param {Array<number>} pins - Array of PINs to check
    * @param {string} cookie - Cookie string
    * @param {string} staticProxy - Static proxy URL
@@ -741,15 +725,10 @@ class Worker {
       return;
     }
 
-    // Check if random processing is enabled
+    // Choose processing mode based on configuration
     if (CONFIG.randomProcessing.enabled) {
-      if (CONFIG.randomProcessing.mode === 'continuous') {
-        this.logger.info(`Worker ${this.id} - Using continuous random selection mode`);
-        await this.processWithContinuousRandom(pins, cookie, staticProxy, CONFIG.randomProcessing.maxIterations);
-      } else {
-        this.logger.info(`Worker ${this.id} - Using shuffle random selection mode`);
-        await this.processWithShuffle(unsentPins, agent, cookie);
-      }
+      this.logger.info(`Worker ${this.id} - Using random shuffle processing mode`);
+      await this.processWithShuffle(unsentPins, agent, cookie);
     } else {
       this.logger.info(`Worker ${this.id} - Using sequential processing mode`);
       await this.processSequentially(unsentPins, agent, cookie);
@@ -763,18 +742,21 @@ class Worker {
    * @param {string} cookie - Cookie string
    */
   async processSequentially(unsentPins, agent, cookie) {
-    for (const pin of unsentPins) {
+    for (let i = 0; i < unsentPins.length; i++) {
+      const pin = unsentPins[i];
+
       if (this.pinChecker.shouldStop()) {
         this.logger.warning(`Worker ${this.id} - Stopping due to shouldStop() condition`);
         return;
       }
-      await this.pinChecker.checkPin(pin, agent, cookie, this.id);
+      const progressInfo = `Progress: ${i + 1}/${unsentPins.length}`;
+      await this.pinChecker.checkPin(pin, agent, cookie, this.id, progressInfo);
     }
     this.logger.info(`Worker ${this.id} - Completed sequential processing`);
   }
 
   /**
-   * Process PINs with shuffle random selection
+   * Process PINs with random shuffle selection
    * @param {Array<string>} unsentPins - Array of unsent formatted PINs
    * @param {*} agent - Proxy agent
    * @param {string} cookie - Cookie string
@@ -799,68 +781,11 @@ class Worker {
         await Utils.delay(CONFIG.randomProcessing.delayBetweenPins);
       }
 
-      this.logger.info(`Worker ${this.id} - Random PIN ${i + 1}/${shuffledPins.length}: ${pin}`);
-      await this.pinChecker.checkPin(pin, agent, cookie, this.id);
+      const progressInfo = `Progress: ${i + 1}/${shuffledPins.length}`;
+      await this.pinChecker.checkPin(pin, agent, cookie, this.id, progressInfo);
     }
 
-    this.logger.success(`Worker ${this.id} - Completed shuffle random processing of all ${shuffledPins.length} PINs`);
-  }
-
-  /**
-   * Process PINs with continuous random selection (alternative approach)
-   * This method continuously picks random PINs until stopped
-   * @param {Array<number>} pins - Array of PINs to check
-   * @param {string} cookie - Cookie string
-   * @param {string} staticProxy - Static proxy URL
-   * @param {number} maxIterations - Maximum number of random selections (optional)
-   */
-  async processWithContinuousRandom(pins, cookie, staticProxy, maxIterations = null) {
-    const agent = this.proxyManager.createStaticProxy(staticProxy);
-    const unsentPins = this.filterUnsentPins(pins);
-
-    if (unsentPins.length === 0) {
-      this.logger.warning(`Worker ${this.id} - No unsent PINs available`);
-      return;
-    }
-
-    this.logger.info(`Worker ${this.id} - Starting continuous random PIN selection from ${unsentPins.length} unsent PINs`);
-    if (maxIterations) {
-      this.logger.info(`Worker ${this.id} - Max iterations limit: ${maxIterations}`);
-    }
-
-    let iterations = 0;
-    const processedPins = new Set(); // Track processed pins to avoid duplicates
-
-    while (!this.pinChecker.shouldStop() && processedPins.size < unsentPins.length) {
-      // Stop if we've hit max iterations
-      if (maxIterations && iterations >= maxIterations) {
-        this.logger.info(`Worker ${this.id} - Reached max iterations (${maxIterations})`);
-        break;
-      }
-
-      // Get available pins (not yet processed in this session)
-      const availablePins = unsentPins.filter(pin => !processedPins.has(pin));
-
-      if (availablePins.length === 0) {
-        this.logger.info(`Worker ${this.id} - All available PINs have been processed`);
-        break;
-      }
-
-      // Pick a random PIN from available ones
-      const randomPin = Utils.getRandomElement(availablePins);
-      processedPins.add(randomPin);
-
-      this.logger.info(`Worker ${this.id} - Random selection #${iterations + 1}: PIN ${randomPin} (${availablePins.length - 1} remaining)`);
-
-      await this.pinChecker.checkPin(randomPin, agent, cookie, this.id);
-
-      iterations++;
-
-      // Add delay between random selections using configuration
-      await Utils.delay(CONFIG.randomProcessing.delayBetweenRandomSelections);
-    }
-
-    this.logger.success(`Worker ${this.id} - Completed continuous random processing. Processed ${processedPins.size} PINs in ${iterations} iterations`);
+    this.logger.success(`Worker ${this.id} - Completed random shuffle processing of all ${shuffledPins.length} PINs`);
   }
 }
 
