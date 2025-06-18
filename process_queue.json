@@ -1,0 +1,27 @@
+[
+  {
+    "id": "1750217458132_ze56nyd65_server1",
+    "name": "Test Process (Server 1)",
+    "accessCode": "74974423",
+    "pinRange": {
+      "start": 0,
+      "end": 99
+    },
+    "originalRange": {
+      "start": 0,
+      "end": 99
+    },
+    "status": "pending",
+    "serverId": 1,
+    "serverAddress": "http://localhost:3001",
+    "totalServers": 1,
+    "createdAt": "2025-06-18T03:30:58.132Z",
+    "startedAt": null,
+    "completedAt": null,
+    "foundPin": null,
+    "error": null,
+    "settings": {
+      "concurrentWorkers": 1
+    }
+  }
+]

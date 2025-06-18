@@ -1,203 +1,347 @@
-# 🎯 Brastel PIN Checker - Refactored
+# Brastel PIN Checker - Hệ thống Kiểm tra PIN Đa Máy Chủ
 
-Một tool kiểm tra PIN Brastel được refactor với tính năng tracking và quản lý blacklist.
+Hệ thống kiểm tra PIN Brastel tự động với khả năng chạy trên nhiều VPS, phân tán workload và đồng bộ hóa giữa các máy chủ.
 
-## ✨ Tính năng mới
+## 🌟 Tính năng chính
 
-### 🔧 0. ESLint Configuration
-- Đã setup ESLint với config phù hợp cho Node.js
-- Code style consistent và clean
-- Chạy `npm run lint` để check code
-- Chạy `npm run lint:fix` để auto-fix các issues
+- **Multi-Server Distribution**: Tự động chia range PIN cho nhiều VPS
+- **Cross-Server Synchronization**: Đồng bộ hóa khi tìm thấy PIN hợp lệ
+- **Process Queue Management**: Quản lý hàng đợi tiến trình tự động
+- **Web GUI Interface**: Giao diện web hiện đại và thân thiện
+- **Real-time Monitoring**: Theo dõi tiến trình thời gian thực
+- **Environment Configuration**: Cấu hình linh hoạt qua file .env
+- **Proxy Support**: Hỗ trợ proxy và rotation
+- **Blacklist Management**: Quản lý danh sách PIN không hợp lệ
 
-### 📝 1. PIN History Tracking
-- **File**: `Data/{accessCode}/sent_pins_history.json`
-- **Mục đích**: Lưu lại tất cả các PIN đã gửi theo từng accessCode
-- **Lợi ích**: Khi restart app, sẽ không gửi lại các PIN đã gửi rồi
-- **Format**:
-```json
-[
-  "9995",
-  "9996",
-  "9997"
-]
+## 🏗️ Kiến trúc hệ thống
+
+```
+VPS 1 (Server 1)    VPS 2 (Server 2)    VPS 3 (Server 3)
+    ↓                     ↓                     ↓
+Range: 0-1999        Range: 2000-3999     Range: 4000-5999
+    ↓                     ↓                     ↓
+        HTTP Communication & Synchronization
 ```
 
-### 🚫 2. PIN Blacklist Management
-- **File**: `Data/{accessCode}/blacklist_pins.json`
-- **Mục đích**: Danh sách các PIN không đúng nhưng trả về success theo từng accessCode
-- **Lợi ích**: Nếu PIN trong blacklist mà trả về success, tool sẽ tiếp tục chạy thay vì dừng
-- **Format**:
-```json
-[
-  "9995",
-  "9996"
-]
-```
+## 📋 Yêu cầu hệ thống
 
-### 🎯 3. Valid PINs Results
-- **File**: `Data/{accessCode}/valid_pins_found.json`
-- **Mục đích**: Lưu các PIN hợp lệ đã tìm thấy theo từng accessCode
-- **Format**:
-```json
-[
-  {
-    "pin": "9999",
-    "accessCode": "82819563",
-    "timestamp": "2025-06-17T01:43:28.876Z"
-  }
-]
-```
+- Node.js 16+
+- NPM hoặc Yarn
+- 5 VPS (có thể ít hơn, điều chỉnh TOTAL_SERVERS)
+- Các VPS có thể kết nối với nhau qua HTTP
+- Port 3000 (hoặc port tùy chọn) mở trên tất cả VPS
 
-## 🚀 Cách sử dụng
+## 🚀 Cài đặt và Thiết lập
 
-### Installation
+### 1. Cài đặt trên mỗi VPS
+
 ```bash
+# Clone project
+git clone <your-repo-url>
+cd BrastelPin
 npm install
 ```
 
-### Chạy tool
+### 2. Cấu hình Environment Variables
+
+Tạo file `.env` trên mỗi VPS với nội dung khác nhau:
+
+**VPS 1 (.env):**
 ```bash
+SERVER_ID=1
+TOTAL_SERVERS=5
+PORT=3000
+SERVER_1_ADDRESS=http://192.168.1.10:3000
+SERVER_2_ADDRESS=http://192.168.1.11:3000
+SERVER_3_ADDRESS=http://192.168.1.12:3000
+SERVER_4_ADDRESS=http://192.168.1.13:3000
+SERVER_5_ADDRESS=http://192.168.1.14:3000
+
+# PIN Checker Configuration
+CONCURRENT_WORKERS=1
+MAX_RETRIES=10
+RETRY_DELAY=3000
+RANDOM_PROCESSING=true
+DELAY_BETWEEN_PINS=100
+```
+
+**VPS 2, 3, 4, 5:** Tương tự, chỉ thay đổi `SERVER_ID=2`, `SERVER_ID=3`, v.v.
+
+### 3. Khởi chạy
+
+Trên mỗi VPS:
+```bash
+node start-servers.js
+```
+
+## 🎯 Cách sử dụng
+
+### Web Interface
+
+1. Truy cập bất kỳ server nào: `http://vps-ip:3000`
+2. Sử dụng Process Queue Manager: `http://vps-ip:3000/process-queue.html`
+
+### Tạo Process mới
+
+1. Điền thông tin Access Code và PIN Range
+2. Hệ thống sẽ tự động chia range cho tất cả server
+3. Các server bắt đầu xử lý đồng thời
+4. Khi server nào tìm thấy PIN hợp lệ, tất cả server khác dừng và chuyển sang process tiếp theo
+
+### Command Line
+
+```bash
+# Chạy trực tiếp PIN checker
 npm start
-# hoặc
-node brastel-pin-checker.js
+
+# Chạy Web GUI
+npm run gui
+
+# Lint code
+npm run lint
 ```
 
-### Kiểm tra code quality
+## 📁 Cấu trúc dự án
+
+```
+BrastelPin/
+├── brastel-pin-checker.js      # Core PIN checking logic
+├── web-gui.js                  # Web server và API
+├── process-queue-manager.js    # Quản lý hàng đợi tiến trình
+├── start-servers.js           # Script khởi chạy server
+├── deploy-vps.sh              # Script deploy tự động
+├── .env                       # Environment variables
+├── env.example               # Mẫu cấu hình .env
+├── package.json              # Dependencies
+├── public/                   # Web assets
+│   ├── index.html           # Giao diện chính
+│   └── process-queue.html   # Quản lý queue
+├── Data/                    # Dữ liệu PIN
+│   └── {accessCode}/
+│       ├── sent_pins_history.json
+│       ├── blacklist_pins.json
+│       └── valid_pins_found.json
+└── Log/                     # Log files
+    └── log_{accessCode}.txt
+```
+
+## ⚙️ Cấu hình nâng cao
+
+### Environment Variables
+
+| Variable | Mô tả | Default |
+|----------|-------|---------|
+| `SERVER_ID` | ID của server hiện tại | 1 |
+| `TOTAL_SERVERS` | Tổng số server | 5 |
+| `PORT` | Port chạy web server | 3000 |
+| `SERVER_X_ADDRESS` | Địa chỉ server X | localhost:300X |
+| `CONCURRENT_WORKERS` | Số worker đồng thời | 1 |
+| `MAX_RETRIES` | Số lần thử lại tối đa | 10 |
+| `RETRY_DELAY` | Thời gian chờ giữa các lần thử | 3000ms |
+| `RANDOM_PROCESSING` | Chế độ xử lý ngẫu nhiên | true |
+| `DELAY_BETWEEN_PINS` | Thời gian chờ giữa các PIN | 100ms |
+
+### Proxy Configuration
+
 ```bash
-npm run lint        # Check issues
-npm run lint:fix    # Auto-fix issues
+# Trong .env
+PROXY_LIST=http://proxy1:port,http://proxy2:port,http://proxy3:port
 ```
 
-## ⚙️ Configuration
+### Cookie Configuration
 
-Tất cả config được centralize trong object `CONFIG`:
-
-```javascript
-const CONFIG = {
-  // PIN range để check
-  pinRange: {
-    start: 5410,
-    end: 5420
-  },
-  
-  // Số workers concurrent
-  concurrentWorkers: 1,
-  
-  // Retry settings
-  maxRetries: 5,
-  retryDelay: 3000,
-  
-  // Files để tracking
-  files: {
-    sentPins: 'sent_pins_history.json',
-    blacklistPins: 'blacklist_pins.json',
-    validPins: 'valid_pins_found.json'
-  }
-};
-```
-
-## 📁 Files được tạo tự động
-
-Khi chạy lần đầu, tool sẽ tự động tạo folder và files theo accessCode:
-
-1. **`Data/{accessCode}/`** - Folder riêng cho từng accessCode
-2. **`Data/{accessCode}/sent_pins_history.json`** - Lịch sử PIN đã gửi
-3. **`Data/{accessCode}/blacklist_pins.json`** - Danh sách PIN blacklist
-4. **`Data/{accessCode}/valid_pins_found.json`** - Kết quả PIN hợp lệ
-5. **`Log/log_{accessCode}_YYYY-MM-DD...txt`** - File log với accessCode và timestamp
-
-## 🛠️ Workflow
-
-1. **Khởi động**: Tool tạo folder `Data/{accessCode}/` và đọc các file tracking
-2. **Skip PIN đã gửi**: Bỏ qua các PIN trong `Data/{accessCode}/sent_pins_history.json`
-3. **Gửi request**: Gửi request cho PIN mới
-4. **Lưu lịch sử**: Thêm PIN vào `Data/{accessCode}/sent_pins_history.json`
-5. **Kiểm tra kết quả**:
-   - Nếu success + PIN trong blacklist → tiếp tục
-   - Nếu success + PIN không trong blacklist → dừng và lưu vào `Data/{accessCode}/valid_pins_found.json`
-   - Nếu fail → tiếp tục PIN tiếp theo
-
-## 📊 Statistics
-
-Tool sẽ hiển thị thống kê:
-- Tổng số PIN đã gửi
-- Số PIN trong blacklist
-- Số PIN hợp lệ tìm thấy
-
-## 🔄 Quản lý Blacklist
-
-### Thêm PIN vào blacklist:
-```javascript
-// Cách 1: Chỉnh sửa file Data/{accessCode}/blacklist_pins.json
-[
-  "9995",
-  "9996",
-  "9997"
-]
-
-// Cách 2: Sử dụng API (trong code)
-fileManager.addBlacklistPin("9998");
-```
-
-### Xem blacklist hiện tại:
-Tool sẽ hiển thị trong statistics khi chạy.
-
-## 🎨 Code Structure
-
-```
-├── FileManager     - Quản lý files tracking
-├── Logger          - Logging với emoji và levels
-├── ProxyManager    - Quản lý proxy (static/dynamic)
-├── PinChecker      - Logic kiểm tra PIN chính
-├── Worker          - Xử lý concurrent workers
-└── BrastelPinChecker - Main application class
-```
-
-## 📝 Logs
-
-Logs có emoji để dễ theo dõi:
-- 🔍 INFO - Thông tin chung
-- ❌ ERROR - Lỗi
-- ✅ SUCCESS - Thành công
-- ⚠️ WARNING - Cảnh báo
-- 🛡️ PROXY - Proxy operations
-- 🎯 FOUND - Tìm thấy PIN hợp lệ
-- ⏭️ SKIP - Bỏ qua PIN
-
-## 🔧 Troubleshooting
-
-### Tool không bỏ qua PIN đã gửi?
-- Kiểm tra file `Data/{accessCode}/sent_pins_history.json` có tồn tại không
-- Kiểm tra format JSON có đúng không
-
-### PIN trong blacklist vẫn dừng tool?
-- Kiểm tra file `Data/{accessCode}/blacklist_pins.json`
-- Đảm bảo PIN format đúng (4 số với leading zero)
-
-### Muốn reset và chạy lại từ đầu?
 ```bash
-# Xóa folder của accessCode cụ thể
-rmdir /s Data\82819563
-# Hoặc xóa toàn bộ data
-rmdir /s Data
-# Chạy lại
-npm start
+# Trong .env
+COOKIE_LIST=cookie1|cookie2|cookie3
 ```
 
-## 🚀 Advanced Usage
+## 🔧 Deployment tự động
 
-### Enable dynamic proxy rotation:
-Uncomment các dòng trong `Worker.process()`:
+### Sử dụng script deploy
+
+1. Cập nhật danh sách VPS trong `deploy-vps.sh`:
+```bash
+VPS_LIST=(
+    "user@192.168.1.10"
+    "user@192.168.1.11"
+    "user@192.168.1.12"
+    "user@192.168.1.13"
+    "user@192.168.1.14"
+)
+```
+
+2. Chạy script:
+```bash
+chmod +x deploy-vps.sh
+./deploy-vps.sh
+```
+
+### Manual deployment
+
+```bash
+# Copy files to VPS
+rsync -avz ./ user@vps-ip:~/BrastelPin/
+
+# SSH to VPS and start
+ssh user@vps-ip
+cd ~/BrastelPin
+npm install
+node start-servers.js
+```
+
+## 🎮 API Documentation
+
+### Process Management
+
+| Endpoint | Method | Mô tả |
+|----------|--------|-------|
+| `/api/queue-status` | GET | Lấy trạng thái queue |
+| `/api/add-process` | POST | Thêm process mới |
+| `/api/start-process` | POST | Bắt đầu process |
+| `/api/stop-process` | POST | Dừng process |
+| `/api/delete-process/:id` | DELETE | Xóa process |
+
+### PIN Checking
+
+| Endpoint | Method | Mô tả |
+|----------|--------|-------|
+| `/api/check-pin` | POST | Kiểm tra PIN đơn lẻ |
+| `/api/get-statistics/:accessCode` | GET | Lấy thống kê |
+| `/api/blacklist-pin` | POST | Thêm PIN vào blacklist |
+
+## 📊 Monitoring & Logging
+
+### Log Files
+
+- **Server logs**: `server.log` (trên mỗi VPS)
+- **PIN checking logs**: `Log/log_{accessCode}.txt`
+
+### Health Check
+
+```bash
+# Kiểm tra server status
+curl http://vps-ip:3000/api/queue-status
+
+# Kiểm tra process đang chạy
+ps aux | grep "node.*web-gui"
+```
+
+### Statistics
+
+- Truy cập web interface để xem thống kê real-time
+- Số PIN đã gửi, blacklist, valid PINs
+- Tiến độ xử lý của từng server
+
+## 🛠️ Troubleshooting
+
+### Server không kết nối được
+
+1. Kiểm tra firewall và port
+```bash
+sudo ufw status
+netstat -tulpn | grep :3000
+```
+
+2. Kiểm tra server logs
+```bash
+tail -f ~/BrastelPin/server.log
+```
+
+### Process không chạy
+
+1. Kiểm tra environment variables
+```bash
+env | grep SERVER_
+```
+
+2. Kiểm tra queue status
+```bash
+curl http://localhost:3000/api/queue-status
+```
+
+### Đồng bộ hóa bị lỗi
+
+1. Restart tất cả servers
+2. Kiểm tra network connectivity giữa các VPS
+3. Xem log để tìm lỗi HTTP communication
+
+## 🔒 Security
+
+### Network Security
+
+- Chỉ mở ports cần thiết (3000)
+- Sử dụng VPN hoặc private network giữa các VPS
+- Cấu hình firewall phù hợp
+
+### Data Security
+
+- Backup định kỳ folder `Data/` và `Log/`
+- Không commit file `.env` vào git
+- Sử dụng HTTPS nếu có thể
+
+## 📖 Examples
+
+### Tạo process qua API
+
 ```javascript
-// if (Date.now() - lastRotate > CONFIG.proxyRotationInterval) {
-//   this.logger.info(`Worker ${this.id}: Rotating proxy after 250 seconds...`);
-//   const proxyData = await this.proxyManager.getNewProxy(apiKey);
-//   agent = proxyData.agent;
-//   lastRotate = proxyData.lastRotate;
-// }
+const response = await fetch('http://vps1:3000/api/add-process', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    process: {
+      name: 'Test Process',
+      accessCode: '74974423',
+      pinRange: { start: 0, end: 9999 },
+      settings: { concurrentWorkers: 1 }
+    }
+  })
+});
 ```
+
+### Kiểm tra statistics
+
+```bash
+curl http://vps1:3000/api/get-statistics/74974423
+```
+
+## 🔄 Updates & Maintenance
+
+### Cập nhật code
+
+```bash
+# Trên mỗi VPS
+git pull
+npm install
+# Restart server
+pkill -f "node.*web-gui"
+node start-servers.js
+```
+
+### Backup
+
+```bash
+# Script backup tự động
+tar -czf backup-$(date +%Y%m%d).tar.gz Data/ Log/ process_queue.json running_jobs_state.json .env
+```
+
+## 🤝 Contributing
+
+1. Fork repository
+2. Tạo feature branch
+3. Commit changes
+4. Push to branch
+5. Create Pull Request
+
+## 📄 License
+
+ISC License - Xem file LICENSE để biết thêm chi tiết.
+
+## 🆘 Support
+
+- Tạo issue trên GitHub để báo lỗi
+- Kiểm tra logs và troubleshooting guide trước khi báo lỗi
+- Cung cấp thông tin chi tiết: OS, Node.js version, error logs
 
 ---
 
-Made with ❤️ - Refactored version with tracking & blacklist features 
+**Made with ❤️ for efficient PIN checking across multiple servers**

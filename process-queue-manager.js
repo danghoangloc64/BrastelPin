@@ -2,6 +2,8 @@
  * Process Queue Manager - Quản lý hàng đợi tiến trình cho multi-server across different VPS
  */
 
+require('dotenv').config();
+
 const fs = require('fs');
 const axios = require('axios');
 
@@ -40,7 +42,7 @@ class ProcessQueueManager {
 
     this.loadQueue();
     console.log(`🏭 Server ${this.currentServerId}/${this.totalServers} initialized`);
-    console.log(`🌐 Server addresses:`, this.serverAddresses);
+    console.log('🌐 Server addresses:', this.serverAddresses);
   }
 
   /**

@@ -442,10 +442,15 @@ app.post('/api/create-process', async (req, res) => {
       });
     }
 
-    if (!pinRange.start || !pinRange.end || pinRange.start >= pinRange.end) {
+    if (
+      pinRange.start == null || pinRange.end == null ||
+      isNaN(pinRange.start) || isNaN(pinRange.end) ||
+      pinRange.start >= pinRange.end ||
+      pinRange.start < 0 || pinRange.end > 9999
+    ) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid pin range'
+        error: 'Invalid pin range. Start must be >= 0, end must be <= 9999, and start < end'
       });
     }
 

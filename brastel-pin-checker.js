@@ -3,6 +3,8 @@
  * A modular PIN checking system with proxy rotation and concurrent workers
  */
 
+require('dotenv').config();
+
 const axios = require('axios');
 const qs = require('qs');
 const fsSync = require('fs');
@@ -65,24 +67,24 @@ const CONFIG = {
     }
   ],
 
-  // Worker configuration
-  concurrentWorkers: 1,
-  maxRetries: 10,
-  retryDelay: 3000,
-  proxyRotationInterval: 250000, // 250 seconds
-  requestTimeout: 60000,
-  maxUndefinedResults: 25, // Stop program if undefined results exceed this
+  // Worker configuration with environment variable support
+  concurrentWorkers: parseInt(process.env.CONCURRENT_WORKERS) || 1,
+  maxRetries: parseInt(process.env.MAX_RETRIES) || 10,
+  retryDelay: parseInt(process.env.RETRY_DELAY) || 3000,
+  proxyRotationInterval: parseInt(process.env.PROXY_ROTATION_INTERVAL) || 250000, // 250 seconds
+  requestTimeout: parseInt(process.env.REQUEST_TIMEOUT) || 60000,
+  maxUndefinedResults: parseInt(process.env.MAX_UNDEFINED_RESULTS) || 25, // Stop program if undefined results exceed this
 
   // Random processing configuration
   randomProcessing: {
-    enabled: true, // Set to true to enable random PIN selection (shuffle mode), false for sequential
-    delayBetweenPins: 100 // Delay in ms between PIN processing
+    enabled: process.env.RANDOM_PROCESSING === 'true' || true, // Set to true to enable random PIN selection (shuffle mode), false for sequential
+    delayBetweenPins: parseInt(process.env.DELAY_BETWEEN_PINS) || 100 // Delay in ms between PIN processing
   },
 
   // Folder paths
   folders: {
-    logs: 'Log',
-    data: 'Data'
+    logs: process.env.LOG_FOLDER || 'Log',
+    data: process.env.DATA_FOLDER || 'Data'
   },
 
   // File paths for tracking (will be dynamically generated based on accessCode)
@@ -98,33 +100,33 @@ const CONFIG = {
 
   // API endpoints and headers
   api: {
-    url: 'https://www.brastel.com/web/WIMS/Manager.aspx',
+    url: process.env.API_URL || 'https://www.brastel.com/web/WIMS/Manager.aspx',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
       'Accept': 'application/json, text/javascript, */*; q=0.01',
-      'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
+      'User-Agent': process.env.USER_AGENT || 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
       'X-Requested-With': 'XMLHttpRequest',
-      'Referer': 'https://www.brastel.com/myaccount/m/password/eng',
-      'Origin': 'https://www.brastel.com',
+      'Referer': process.env.REFERER || 'https://www.brastel.com/myaccount/m/password/eng',
+      'Origin': process.env.ORIGIN || 'https://www.brastel.com',
       'Accept-Encoding': 'gzip, deflate, br, zstd',
       'Accept-Language': 'en-US,en;q=0.9',
       'Connection': 'keep-alive'
     }
   },
 
-  // Static proxy list
-  proxies: [
+  // Static proxy list (can be overridden by PROXY_LIST environment variable)
+  proxies: (process.env.PROXY_LIST ? process.env.PROXY_LIST.split(',') : [
     '',
     '',
     ''
-  ],
+  ]),
 
-  // Cookie configurations
-  cookies: [
-    '_ga=GA1.2.2004863075.1749788627; ASP.NET_SessionId=kkmvt2y4ni0d4bp1sg0vz3xf; AWSELB=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9F2459D1D823108D586FB065E7B5F9002AD22EB5161F2C7AB3014A70051CE4FA39D6AA5C0E88A842A861D33DC4EA44715; AWSELBCORS=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9F2459D1D823108D586FB065E7B5F9002AD22EB5161F2C7AB3014A70051CE4FA39D6AA5C0E88A842A861D33DC4EA44715; _gid=GA1.2.756149190.1750037918; ASPSESSIONIDCQDCDADQ=EMMPDBIDOPDCKJKJCDCMKLBJ; _gat=1',
+  // Cookie configurations (can be overridden by COOKIE_LIST environment variable)
+  cookies: (process.env.COOKIE_LIST ? process.env.COOKIE_LIST.split('|') : [
+    '_ga=GA1.2.2004863075.1749788627; ASP.NET_SessionId=kkmvt2y4ni0d4bp1sg0vz3xf; AWSELB=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9F2459D1D823108D586FB065E7B5F9002AD22EB5161F2C7AB3014A70051CE4FA39D6AA5C0E88A842A861D33DC4EA44715; AWSELBCORS=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9F2459D1D823108D586FB065E7B5F9002AD22EB5161F2B7AB3014A70051CE4FA39D6AA5C0E88A842A861D33DC4EA44715; _gid=GA1.2.756149190.1750037918; ASPSESSIONIDCQDCDADQ=EMMPDBIDOPDCKJKJCDCMKLBJ; _gat=1',
     'ASPSESSIONIDCQDCDADQ=FMMPDBIDMJCOKDIBPHJPDCOP; AWSELB=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9630A4EB55147521A4CC93077CC30C2F8ED0CDD21FDE9E146F00EB73527DB00B97FD4E580278805751D3836308F6F276B; AWSELBCORS=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9630A4EB55147521A4CC93077CC30C2F8ED0CDD21FDE9E146F00EB73527DB00B97FD4E580278805751D3836308F6F276B; ASP.NET_SessionId=jdjtcrz3ldwqknn0la2hglta; _ga=GA1.2.1880294636.1750065908; _gid=GA1.2.166709486.1750065908; _gat=1',
     'ASPSESSIONIDCQDCDADQ=FMMPDBIDMJCOKDIBPHJPDCOP; AWSELB=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9630A4EB55147521A4CC93077CC30C2F8ED0CDD21FDE9E146F00EB73527DB00B97FD4E580278805751D3836308F6F276B; AWSELBCORS=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9630A4EB55147521A4CC93077CC30C2F8ED0CDD21FDE9E146F00EB73527DB00B97FD4E580278805751D3836308F6F276B; ASP.NET_SessionId=jdjtcrz3ldwqknn0la2hglta; _ga=GA1.2.1880294636.1750065908; _gid=GA1.2.166709486.1750065908; _gat=1; signInLangTrackEvent=50250189300514'
-  ]
+  ])
 };
 
 /**

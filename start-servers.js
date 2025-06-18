@@ -3,6 +3,8 @@
  * Để chạy trên multiple VPS, copy toàn bộ project vào từng VPS và chạy script này
  */
 
+require('dotenv').config();
+
 const { spawn } = require('child_process');
 
 // Đọc cấu hình từ environment variables
