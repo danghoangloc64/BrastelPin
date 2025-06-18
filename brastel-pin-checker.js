@@ -692,7 +692,93 @@ class Worker {
   }
 
   /**
-   * Filter out already sent PINs
+   * Get available PINs (full range minus already sent PINs)
+   * @param {number} start - Start range
+   * @param {number} end - End range
+   * @returns {Array<string>} Array of available formatted PINs
+   */
+  getAvailablePins(start, end) {
+    // Generate full range
+    const fullRange = Utils.generateRange(start, end);
+
+    // Filter out already sent PINs
+    const availablePins = fullRange
+      .map(pin => Utils.formatPin(pin))
+      .filter(formattedPin => {
+        if (this.fileManager.isPinSent(formattedPin)) {
+          return false;
+        }
+        return true;
+      });
+
+    this.logger.info(`Worker ${this.id} - Full range: ${fullRange.length} PINs, Available: ${availablePins.length} PINs`);
+    return availablePins;
+  }
+
+  /**
+   * Process available PINs directly (new method)
+   * @param {Array<string>} availablePins - Array of available formatted PINs
+   * @param {string} cookie - Cookie string
+   * @param {string} staticProxy - Static proxy URL
+   */
+  async processAvailablePins(availablePins, cookie, staticProxy) {
+    const agent = this.proxyManager.createStaticProxy(staticProxy);
+
+    this.logger.info(`Worker ${this.id} - Processing ${availablePins.length} available PINs`);
+
+    if (availablePins.length === 0) {
+      this.logger.warning(`Worker ${this.id} - No available PINs to process`);
+      return;
+    }
+
+    // Choose processing mode based on configuration
+    if (CONFIG.randomProcessing.enabled) {
+      this.logger.info(`Worker ${this.id} - Using random shuffle processing mode`);
+      await this.processWithShuffle(availablePins, agent, cookie);
+    } else {
+      this.logger.info(`Worker ${this.id} - Using sequential processing mode`);
+      await this.processSequentially(availablePins, agent, cookie);
+    }
+  }
+
+  /**
+   * Process a list of PINs (either sequentially or with shuffle random selection)
+   * @param {Array<number>} pins - Array of PINs to check (will be ignored, using range instead)
+   * @param {string} cookie - Cookie string
+   * @param {string} staticProxy - Static proxy URL
+   * @param {Object} pinRange - Pin range object with start and end
+   */
+  async process(pins, cookie, staticProxy, pinRange = null) {
+    const agent = this.proxyManager.createStaticProxy(staticProxy);
+
+    // If pinRange is provided, use it to get available PINs
+    let availablePins;
+    if (pinRange) {
+      availablePins = this.getAvailablePins(pinRange.start, pinRange.end);
+    } else {
+      // Fallback to old method for backward compatibility
+      availablePins = this.filterUnsentPins(pins);
+    }
+
+    this.logger.info(`Worker ${this.id} - Total available PINs to process: ${availablePins.length}`);
+
+    if (availablePins.length === 0) {
+      this.logger.warning(`Worker ${this.id} - No available PINs to process`);
+      return;
+    }
+
+    // Choose processing mode based on configuration
+    if (CONFIG.randomProcessing.enabled) {
+      this.logger.info(`Worker ${this.id} - Using random shuffle processing mode`);
+      await this.processWithShuffle(availablePins, agent, cookie);
+    } else {
+      this.logger.info(`Worker ${this.id} - Using sequential processing mode`);
+      await this.processSequentially(availablePins, agent, cookie);
+    }
+  }
+
+  /**
+   * Filter out already sent PINs (kept for backward compatibility)
    * @param {Array<number>} pins - Array of PINs to check
    * @returns {Array<string>} Array of unsent formatted PINs
    */
@@ -706,33 +792,6 @@ class Worker {
         }
         return true;
       });
-  }
-
-  /**
-   * Process a list of PINs (either sequentially or with shuffle random selection)
-   * @param {Array<number>} pins - Array of PINs to check
-   * @param {string} cookie - Cookie string
-   * @param {string} staticProxy - Static proxy URL
-   */
-  async process(pins, cookie, staticProxy) {
-    const agent = this.proxyManager.createStaticProxy(staticProxy);
-    const unsentPins = this.filterUnsentPins(pins);
-
-    this.logger.info(`Worker ${this.id} - Total unsent PINs available: ${unsentPins.length}`);
-
-    if (unsentPins.length === 0) {
-      this.logger.warning(`Worker ${this.id} - No unsent PINs available to process`);
-      return;
-    }
-
-    // Choose processing mode based on configuration
-    if (CONFIG.randomProcessing.enabled) {
-      this.logger.info(`Worker ${this.id} - Using random shuffle processing mode`);
-      await this.processWithShuffle(unsentPins, agent, cookie);
-    } else {
-      this.logger.info(`Worker ${this.id} - Using sequential processing mode`);
-      await this.processSequentially(unsentPins, agent, cookie);
-    }
   }
 
   /**
@@ -803,6 +862,30 @@ class SingleAccessCodeChecker {
   }
 
   /**
+   * Get available PINs (full range minus already sent PINs)
+   * @returns {Array<string>} Array of available formatted PINs
+   */
+  getAvailablePins() {
+    const fullRange = Utils.generateRange(this.pinRange.start, this.pinRange.end);
+    const availablePins = fullRange
+      .map(pin => Utils.formatPin(pin))
+      .filter(formattedPin => !this.fileManager.isPinSent(formattedPin));
+
+    this.logger.info(`Access Code ${this.accessCode} - Full range: ${fullRange.length} PINs, Available: ${availablePins.length} PINs`);
+    return availablePins;
+  }
+
+  /**
+   * Distribute available PINs among workers (instead of distributing full range)
+   * @param {Array<string>} availablePins - Array of available formatted PINs
+   * @returns {Array<Array<string>>} Array of PIN batches for workers
+   */
+  distributeAvailablePins(availablePins) {
+    const batchSize = Math.ceil(availablePins.length / CONFIG.concurrentWorkers);
+    return Utils.chunkArray(availablePins, batchSize);
+  }
+
+  /**
    * Generate PIN range for this accessCode
    * @returns {Array<number>} Array of PINs to check
    */
@@ -811,7 +894,7 @@ class SingleAccessCodeChecker {
   }
 
   /**
-   * Distribute PINs among workers
+   * Distribute PINs among workers (old method - kept for compatibility)
    * @param {Array<number>} pins - Array of PINs
    * @returns {Array<Array<number>>} Array of PIN batches for workers
    */
@@ -853,7 +936,37 @@ class SingleAccessCodeChecker {
   }
 
   /**
-   * Create workers
+   * Create workers with new available PINs distribution
+   * @param {Array<string>} availablePins - Available formatted PINs
+   * @returns {Array<Promise>} Array of worker promises
+   */
+  createWorkersWithAvailablePins(availablePins) {
+    const pinBatches = this.distributeAvailablePins(availablePins);
+    const workers = [];
+
+    for (let i = 0; i < CONFIG.concurrentWorkers; i++) {
+      // Create a separate PinChecker instance for each worker to avoid shared state
+      const workerPinChecker = new PinChecker(this.logger, this.proxyManager, this.fileManager, this.accessCode);
+
+      // Share the 'found' state from the main pinChecker so all workers can see when to stop
+      Object.defineProperty(workerPinChecker, 'found', {
+        get: () => this.pinChecker.found,
+        set: (value) => { this.pinChecker.found = value; }
+      });
+
+      const worker = new Worker(i + 1, this.logger, this.proxyManager, workerPinChecker, this.fileManager);
+      const cookie = CONFIG.cookies[i] || CONFIG.cookies[0]; // Fallback to first cookie
+      const staticProxy = CONFIG.proxies[i] || ''; // Fallback to unused proxy
+
+      // Pass available PINs directly to worker (using old method signature for now)
+      workers.push(worker.processAvailablePins(pinBatches[i] || [], cookie, staticProxy));
+    }
+
+    return workers;
+  }
+
+  /**
+   * Create workers (old method - kept for compatibility)
    * @param {Array<Array<number>>} pinBatches - PIN batches for workers
    * @returns {Array<Promise>} Array of worker promises
    */
@@ -874,7 +987,7 @@ class SingleAccessCodeChecker {
       const cookie = CONFIG.cookies[i] || CONFIG.cookies[0]; // Fallback to first cookie
       const staticProxy = CONFIG.proxies[i] || ''; // Fallback to unused proxy
 
-      workers.push(worker.process(pinBatches[i] || [], cookie, staticProxy));
+      workers.push(worker.process(pinBatches[i] || [], cookie, staticProxy, this.pinRange));
     }
 
     return workers;
@@ -905,9 +1018,35 @@ class SingleAccessCodeChecker {
       return true; // Continue to next accessCode
     }
 
-    const pins = this.generatePinRange();
-    const pinBatches = this.distributePins(pins);
-    const workers = this.createWorkers(pinBatches);
+    // Use new logic: get available PINs first, then distribute among workers
+    const availablePins = this.getAvailablePins();
+
+    if (availablePins.length === 0) {
+      this.logger.warning(`No available PINs to process for AccessCode: ${this.accessCode}`);
+      return true; // Continue to next accessCode
+    }
+
+    // Distribute available PINs among workers and create workers
+    const pinBatches = this.distributeAvailablePins(availablePins);
+    const workers = [];
+
+    for (let i = 0; i < CONFIG.concurrentWorkers; i++) {
+      // Create a separate PinChecker instance for each worker to avoid shared state
+      const workerPinChecker = new PinChecker(this.logger, this.proxyManager, this.fileManager, this.accessCode);
+
+      // Share the 'found' state from the main pinChecker so all workers can see when to stop
+      Object.defineProperty(workerPinChecker, 'found', {
+        get: () => this.pinChecker.found,
+        set: (value) => { this.pinChecker.found = value; }
+      });
+
+      const worker = new Worker(i + 1, this.logger, this.proxyManager, workerPinChecker, this.fileManager);
+      const cookie = CONFIG.cookies[i] || CONFIG.cookies[0]; // Fallback to first cookie
+      const staticProxy = CONFIG.proxies[i] || ''; // Fallback to unused proxy
+
+      // Process available PINs directly
+      workers.push(worker.processAvailablePins(pinBatches[i] || [], cookie, staticProxy));
+    }
 
     await Promise.all(workers);
 
