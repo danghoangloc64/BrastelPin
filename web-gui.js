@@ -3,15 +3,16 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
-const { BrastelPinChecker, CONFIG } = require('./brastel-pin-checker');
+const { BrastelPinChecker, CONFIG, NtfyNotifier } = require('./brastel-pin-checker');
 const ProcessQueueManager = require('./process-queue-manager');
 
 const app = express();
 const HOST = '0.0.0.0';
 const PORT = parseInt(process.env.PORT) || 3000;
 
-// Initialize Process Queue Manager
+// Initialize Process Queue Manager and NTFY Notifier
 const processQueue = new ProcessQueueManager();
+const ntfyNotifier = new NtfyNotifier();
 
 // File to persist job states
 const JOBS_STATE_FILE = 'running_jobs_state.json';
@@ -608,6 +609,12 @@ async function startProcessChecker(process) {
 
     // Kiểm tra xem có tìm được PIN không
     const foundPin = await checkForFoundPin(process.accessCode);
+
+    // Gửi notification nếu tìm được PIN
+    if (foundPin) {
+      ntfyNotifier.sendPinFoundNotification(process.accessCode, foundPin, process.env.SERVER_ID)
+        .catch(error => console.error(`NTFY notification failed: ${error.message}`));
+    }
 
     // Hoàn thành process
     await processQueue.completeProcess(process.id, foundPin);

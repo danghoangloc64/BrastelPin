@@ -6,6 +6,7 @@ require('dotenv').config();
 
 const fs = require('fs');
 const axios = require('axios');
+const { NtfyNotifier } = require('./brastel-pin-checker');
 
 /**
  * Cấu trúc tiến trình:
@@ -39,6 +40,7 @@ class ProcessQueueManager {
     this.processQueue = [];
     this.currentProcess = null;
     this.isProcessing = false;
+    this.ntfyNotifier = new NtfyNotifier(); // Add NTFY notifier
 
     this.loadQueue();
     console.log(`🏭 Server ${this.currentServerId}/${this.totalServers} initialized`);
@@ -268,8 +270,17 @@ class ProcessQueueManager {
 
     if (foundPin) {
       console.log(`🎯 Process ${processId} found PIN: ${foundPin}`);
+
+      // Send NTFY notification for successful PIN discovery
+      this.ntfyNotifier.sendPinFoundNotification(process.accessCode, foundPin, this.currentServerId)
+        .catch(error => console.error(`NTFY notification failed: ${error.message}`));
+
       // Thông báo cho các server khác dừng lại
       await this.notifyServersToStop(process.accessCode, foundPin);
+    } else {
+      // Send process completion notification (no PIN found)
+      this.ntfyNotifier.sendProcessCompleteNotification(process.name, process.accessCode, foundPin, this.currentServerId)
+        .catch(error => console.error(`NTFY notification failed: ${error.message}`));
     }
 
     this.isProcessing = false;

