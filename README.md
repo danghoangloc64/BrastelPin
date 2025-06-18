@@ -140,6 +140,9 @@ BrastelPin/
 | `RETRY_DELAY` | Thời gian chờ giữa các lần thử | 3000ms |
 | `RANDOM_PROCESSING` | Chế độ xử lý ngẫu nhiên | true |
 | `DELAY_BETWEEN_PINS` | Thời gian chờ giữa các PIN | 100ms |
+| `NTFY_TOPIC` | Topic NTFY để nhận thông báo | dhloc |
+| `NTFY_SERVER` | NTFY server URL | https://ntfy.sh |
+| `NTFY_TITLE` | Tiêu đề thông báo NTFY | Brastel PIN Checker |
 
 ### Proxy Configuration
 
@@ -153,6 +156,32 @@ PROXY_LIST=http://proxy1:port,http://proxy2:port,http://proxy3:port
 ```bash
 # Trong .env
 COOKIE_LIST=cookie1|cookie2|cookie3
+```
+
+### NTFY Notification Configuration
+
+Hệ thống hỗ trợ gửi thông báo tự động qua [ntfy.sh](https://ntfy.sh) khi tìm thấy PIN hợp lệ.
+
+```bash
+# Trong .env
+NTFY_TOPIC=dhloc
+NTFY_SERVER=https://ntfy.sh
+NTFY_TITLE=Brastel PIN Checker
+```
+
+**Cài đặt NTFY app (khuyến nghị):**
+- **Android**: [Download NTFY](https://play.google.com/store/apps/details?id=io.heckel.ntfy)
+- **iOS**: [Download NTFY](https://apps.apple.com/us/app/ntfy/id1625396347)
+
+Sau khi cài đặt app:
+1. Mở app NTFY
+2. Thêm topic `dhloc` (hoặc topic bạn đã cấu hình)
+3. Bật notification cho topic này
+
+**Test NTFY notification:**
+```bash
+# Chạy test để kiểm tra NTFY
+node test-ntfy.js
 ```
 
 ## 🔧 Deployment tự động
@@ -264,6 +293,35 @@ curl http://localhost:3000/api/queue-status
 1. Restart tất cả servers
 2. Kiểm tra network connectivity giữa các VPS
 3. Xem log để tìm lỗi HTTP communication
+
+### NTFY Notification không hoạt động
+
+1. **Kiểm tra cấu hình**:
+   ```bash
+   # Kiểm tra file .env
+   cat .env | grep NTFY
+   ```
+
+2. **Kiểm tra topic**:
+   - Đảm bảo bạn đã subscribe đúng topic trong app
+   - Topic name phải giống nhau giữa .env và app
+
+3. **Test thử**:
+   ```bash
+   # Chạy test NTFY
+   node test-ntfy.js
+   ```
+
+4. **Kiểm tra kết nối**:
+   ```bash
+   # Test kết nối đến ntfy.sh
+   curl https://ntfy.sh
+   ```
+
+**Lỗi phổ biến:**
+- "NTFY topic not configured": Thêm `NTFY_TOPIC=dhloc` vào `.env`
+- "Failed to send NTFY notification": Kiểm tra kết nối internet
+- Không thấy notification: Kiểm tra app đã subscribe đúng topic chưa
 
 ## 🔒 Security
 
