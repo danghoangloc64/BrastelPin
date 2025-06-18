@@ -710,46 +710,38 @@ class Worker {
   }
 
   /**
-   * Filter out already sent PINs
-   * @param {Array<number>} pins - Array of PINs to check
-   * @returns {Array<string>} Array of unsent formatted PINs
+   * Format PINs for processing (PINs đã được lọc ở distributePins)
+   * @param {Array<number>} pins - Array of PINs to format
+   * @returns {Array<string>} Array of formatted PINs
    */
-  filterUnsentPins(pins) {
-    return pins
-      .map(pin => Utils.formatPin(pin))
-      .filter(formattedPin => {
-        if (this.fileManager.isPinSent(formattedPin)) {
-          this.logger.skip(`Worker ${this.id} - Skipping already sent PIN: ${formattedPin}`);
-          return false;
-        }
-        return true;
-      });
+  formatPins(pins) {
+    return pins.map(pin => Utils.formatPin(pin));
   }
 
   /**
    * Process a list of PINs (either sequentially or with shuffle random selection)
-   * @param {Array<number>} pins - Array of PINs to check
+   * @param {Array<number>} pins - Array of PINs to check (đã được lọc unsent)
    * @param {string} cookie - Cookie string
    * @param {string} staticProxy - Static proxy URL
    */
   async process(pins, cookie, staticProxy) {
     const agent = this.proxyManager.createStaticProxy(staticProxy);
-    const unsentPins = this.filterUnsentPins(pins);
+    const formattedPins = this.formatPins(pins);
 
-    this.logger.info(`Worker ${this.id} - Total unsent PINs available: ${unsentPins.length}`);
+    this.logger.info(`Worker ${this.id} - Processing ${formattedPins.length} PINs`);
 
-    if (unsentPins.length === 0) {
-      this.logger.warning(`Worker ${this.id} - No unsent PINs available to process`);
+    if (formattedPins.length === 0) {
+      this.logger.warning(`Worker ${this.id} - No PINs available to process`);
       return;
     }
 
     // Choose processing mode based on configuration
     if (CONFIG.randomProcessing.enabled) {
       this.logger.info(`Worker ${this.id} - Using random shuffle processing mode`);
-      await this.processWithShuffle(unsentPins, agent, cookie);
+      await this.processWithShuffle(formattedPins, agent, cookie);
     } else {
       this.logger.info(`Worker ${this.id} - Using sequential processing mode`);
-      await this.processSequentially(unsentPins, agent, cookie);
+      await this.processSequentially(formattedPins, agent, cookie);
     }
   }
 
@@ -834,8 +826,30 @@ class SingleAccessCodeChecker {
    * @returns {Array<Array<number>>} Array of PIN batches for workers
    */
   distributePins(pins) {
-    const batchSize = Math.ceil(pins.length / CONFIG.concurrentWorkers);
-    return Utils.chunkArray(pins, batchSize);
+    // Lọc PIN đã gửi trước khi chia chunk để đảm bảo phân bố đều
+    const unsentPins = pins.filter(pin => {
+      const formattedPin = Utils.formatPin(pin);
+      return !this.fileManager.isPinSent(formattedPin);
+    });
+
+    this.logger.info(`Total PINs in range: ${pins.length}`);
+    this.logger.info(`Unsent PINs available: ${unsentPins.length}`);
+    this.logger.info(`Already sent PINs: ${pins.length - unsentPins.length}`);
+
+    if (unsentPins.length === 0) {
+      this.logger.warning('No unsent PINs available to process');
+      return [];
+    }
+
+    const batchSize = Math.ceil(unsentPins.length / CONFIG.concurrentWorkers);
+    const pinBatches = Utils.chunkArray(unsentPins, batchSize);
+
+    this.logger.info(`Distributed ${unsentPins.length} unsent PINs into ${pinBatches.length} batches`);
+    pinBatches.forEach((batch, index) => {
+      this.logger.info(`Worker ${index + 1} will process ${batch.length} PINs`);
+    });
+
+    return pinBatches;
   }
 
   /**
