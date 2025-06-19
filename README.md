@@ -144,7 +144,7 @@ node cli.js config set ntfy.topic "your-topic"
 ```
 
 #### 5. Xem thống kê
-```bash
+   ```bash
 # Thống kê tất cả access codes
 node cli.js stats
 

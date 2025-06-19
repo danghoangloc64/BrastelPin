@@ -15,7 +15,9 @@
     "cli:config": "node cli.js config",
     "lint": "eslint *.js",
     "lint:fix": "eslint *.js --fix",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "keywords": [
     "brastel",
@@ -38,6 +40,17 @@
     "qs": "^6.11.0"
   },
   "devDependencies": {
-    "eslint": "^8.57.1"
+    "eslint": "^8.57.1",
+    "jest": "^30.0.1"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "setupFilesAfterEnv": ["<rootDir>/test/setup.js"],
+    "collectCoverageFrom": [
+      "*.js",
+      "!jest.config.js",
+      "!coverage/**",
+      "!node_modules/**"
+    ]
   }
 }

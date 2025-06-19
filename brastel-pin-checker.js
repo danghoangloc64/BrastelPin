@@ -1267,8 +1267,15 @@ if (require.main === module) {
 
 module.exports = {
   BrastelPinChecker,
+  ConfigLoader,
   CONFIG,
   Utils,
   LOG_LEVELS,
-  API_RESULT_CODES
+  API_RESULT_CODES,
+  FileManager,
+  Logger,
+  ProxyManager,
+  PinChecker,
+  Worker,
+  SingleAccessCodeChecker
 };

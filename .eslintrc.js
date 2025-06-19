@@ -1,8 +1,10 @@
 module.exports = {
   env: {
-    browser: false,
+    browser: true,
+    commonjs: true,
     es2021: true,
-    node: true
+    node: true,
+    jest: true
   },
   extends: [
     'eslint:recommended'
@@ -14,6 +16,7 @@ module.exports = {
   rules: {
     // Code style
     'indent': ['error', 2],
+    'linebreak-style': 'off',
     'quotes': ['error', 'single'],
     'semi': ['error', 'always'],
     'comma-dangle': ['error', 'never'],
@@ -47,6 +50,7 @@ module.exports = {
     'module': 'readonly',
     'require': 'readonly',
     'exports': 'readonly',
-    'global': 'readonly'
+    'global': 'readonly',
+    'createTestConfigFiles': 'readonly'
   }
 };
