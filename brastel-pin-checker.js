@@ -216,7 +216,7 @@ class ConfigLoader {
 
       // If file is empty or only has empty lines, use no proxy
       if (data.length === 0 || data.every(line => line === '')) {
-        console.log(`🛡️  Proxies: No proxy configured`);
+        console.log('🛡️  Proxies: No proxy configured');
         return [''];
       }
 
@@ -1195,8 +1195,8 @@ class NtfyNotifier {
   sanitizeHeader(text) {
     // Remove emojis and special characters that might cause HTTP header issues
     return text.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '')
-               .replace(/[^\x00-\x7F]/g, '') // Remove non-ASCII characters
-               .trim();
+      .replace(/[^\x00-\x7F]/g, '') // Remove non-ASCII characters
+      .trim();
   }
 
   /**

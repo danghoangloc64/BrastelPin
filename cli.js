@@ -7,7 +7,6 @@
 
 const { BrastelPinChecker, CONFIG } = require('./brastel-pin-checker');
 const fs = require('fs');
-const path = require('path');
 
 // CLI configuration
 const CLI_CONFIG = {
@@ -96,7 +95,7 @@ CONFIGURATION:
 `);
   }
 
-    /**
+  /**
    * Display current configuration
    */
   displayConfig() {
@@ -138,7 +137,7 @@ CONFIGURATION:
     console.log('  - cookies.txt');
   }
 
-    /**
+  /**
    * Set configuration value
    */
   setConfig(key, value) {
@@ -297,7 +296,7 @@ CONFIGURATION:
     });
   }
 
-    /**
+  /**
    * Start PIN checking process
    */
   async startChecker(options = {}) {
