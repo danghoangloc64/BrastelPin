@@ -5,12 +5,14 @@
 ## 🎯 Tính năng chính
 
 - ✅ **Giao diện CLI hoàn chỉnh** - Dễ sử dụng qua SSH
+- ✅ **Cấu hình từ file text** - Dễ dàng chỉnh sửa
+- ✅ **Auto workers** - Số worker tự động dựa trên số cookies
+- ✅ **PIN Range chung** - Cùng một range cho tất cả access codes
+- ✅ **Fixed proxy** - Proxy cố định cho mỗi worker
 - ✅ **Đa luồng (Multi-threading)** - Xử lý nhiều PIN cùng lúc
 - ✅ **Hỗ trợ nhiều Access Code** - Kiểm tra nhiều tài khoản
-- ✅ **Proxy rotation** - Tự động xoay proxy
 - ✅ **Thông báo Ntfy** - Thông báo khi tìm thấy PIN hợp lệ
 - ✅ **Lưu trữ dữ liệu** - Theo dõi tiến độ và kết quả
-- ✅ **Cấu hình linh hoạt** - Dễ dàng tùy chỉnh
 
 ## 📦 Cài đặt
 
@@ -25,11 +27,52 @@ cd BrastelPin
 npm install
 ```
 
-### 3. Cấu hình (tùy chọn)
+### 3. Chạy setup script (tùy chọn)
 ```bash
-# Tạo file cấu hình CLI
-node cli.js config
+./start-ssh.sh
 ```
+
+## ⚙️ Cấu hình từ File Text
+
+### 📁 Các file cấu hình:
+
+**1. `pinrange.txt`** - Cấu hình phạm vi PIN chung
+```
+1000
+5000
+```
+- Dòng 1: PIN tối thiểu
+- Dòng 2: PIN tối đa
+- Phạm vi này áp dụng cho tất cả access codes
+
+**2. `accesscodes.txt`** - Danh sách access codes
+```
+74974423
+33849108
+11111111
+```
+- Mỗi dòng là một access code
+- Có thể có nhiều access codes
+
+**3. `proxies.txt`** - Danh sách proxy (tùy chọn)
+```
+http://proxy1:port
+http://proxy2:port
+
+```
+- Mỗi dòng là một proxy
+- Dòng trống hoặc file trống = không dùng proxy
+- Proxy được gán cố định cho worker
+
+**4. `cookies.txt`** - Danh sách cookies
+```
+cookie_string_1
+cookie_string_2
+cookie_string_3
+```
+- Mỗi dòng là một cookie hoàn chỉnh
+- Số lượng cookies = số lượng workers tự động
+- Mỗi worker được gán một cookie cố định
 
 ## 🚀 Sử dụng qua SSH
 
@@ -42,17 +85,65 @@ node cli.js help
 
 #### 2. Bắt đầu kiểm tra PIN
 ```bash
-# Chế độ cơ bản
+# Chế độ cơ bản (auto workers từ cookies)
 node cli.js start
 
-# Với các tùy chọn
-node cli.js start --workers 3 --random --delay 200
+# Với random processing
+node cli.js start --random
 
-# Với số lượng worker tối đa
-node cli.js start --workers 5 --max-undefined 50
+# Với custom settings
+node cli.js start --random --delay 200 --max-undefined 50
 ```
 
-#### 3. Xem thống kê
+#### 3. Xem cấu hình hiện tại
+```bash
+node cli.js config
+```
+
+#### 4. Cập nhật cấu hình
+
+**Cập nhật PIN Range:**
+```bash
+node cli.js config set pinrange "0-9999"
+```
+
+**Cập nhật Access Codes:**
+```bash
+node cli.js config set accesscodes "12345678,87654321"
+```
+
+**Cập nhật Proxies:**
+```bash
+# Thêm proxies
+node cli.js config set proxies "proxy1:port,proxy2:port"
+
+# Không dùng proxy
+node cli.js config set proxies "none"
+```
+
+**Cập nhật Cookies:**
+```bash
+# Dùng ||| để phân tách cookies
+node cli.js config set cookies "cookie1|||cookie2|||cookie3"
+```
+
+**Cài đặt khác:**
+```bash
+# Bật/tắt random processing
+node cli.js config set randomProcessing.enabled true
+
+# Thay đổi delay
+node cli.js config set randomProcessing.delayBetweenPins 150
+
+# Thay đổi max undefined
+node cli.js config set maxUndefinedResults 30
+
+# Cấu hình Ntfy
+node cli.js config set ntfy.enabled true
+node cli.js config set ntfy.topic "your-topic"
+```
+
+#### 5. Xem thống kê
 ```bash
 # Thống kê tất cả access codes
 node cli.js stats
@@ -61,95 +152,38 @@ node cli.js stats
 node cli.js stats 74974423
 ```
 
-#### 4. Xem cấu hình hiện tại
-```bash
-node cli.js config
-```
-
-#### 5. Thay đổi cấu hình
-```bash
-# Thay đổi số lượng worker
-node cli.js config set concurrentWorkers 5
-
-# Bật/tắt chế độ random
-node cli.js config set randomProcessing.enabled true
-
-# Thay đổi delay giữa các PIN
-node cli.js config set randomProcessing.delayBetweenPins 150
-```
-
-#### 6. Xem trạng thái
-```bash
-node cli.js status
-```
-
-### Các tùy chọn cho lệnh `start`
+### Tùy chọn cho lệnh `start`
 
 | Tùy chọn | Mô tả | Ví dụ |
 |----------|-------|-------|
-| `--workers <số>` | Số lượng worker đồng thời | `--workers 3` |
 | `--random` | Bật chế độ xử lý ngẫu nhiên | `--random` |
 | `--max-undefined <số>` | Giới hạn kết quả undefined | `--max-undefined 50` |
 | `--delay <ms>` | Thời gian delay giữa các PIN | `--delay 200` |
 
-## 📊 Cấu hình Access Codes
+## 📊 Cách hoạt động Auto Workers
 
-Mặc định, ứng dụng được cấu hình với 2 access codes:
+- **Số workers = Số cookies**: Nếu có 3 cookies → 3 workers
+- **Fixed assignment**: Mỗi worker được gán:
+  - 1 cookie cố định
+  - 1 proxy cố định (nếu có)
+- **Load balancing**: PINs được chia đều cho các workers
 
-```javascript
-accessCodes: [
-  {
-    accessCode: '74974423',
-    pinRange: { start: 5410, end: 9999 }
-  },
-  {
-    accessCode: '33849108',
-    pinRange: { start: 0, end: 9999 }
-  }
-]
+### Ví dụ với 3 cookies:
 ```
-
-### Thay đổi Access Codes
-
-Bạn có thể chỉnh sửa trực tiếp file `cli-config.json` hoặc sử dụng lệnh:
-
-```bash
-# Tạo file cấu hình mới
-node cli.js config > cli-config.json
-```
-
-## 🛡️ Cấu hình Proxy
-
-Để thêm proxy, chỉnh sửa mảng `proxies` trong cấu hình:
-
-```bash
-node cli.js config set proxies '["http://proxy1:port", "http://proxy2:port"]'
-```
-
-## 🍪 Cấu hình Cookies
-
-Cookies được cấu hình sẵn trong file chính. Để cập nhật, chỉnh sửa mảng `cookies` trong `brastel-pin-checker.js`.
-
-## 📱 Thông báo Ntfy
-
-Cấu hình thông báo qua Ntfy:
-
-```bash
-# Bật/tắt thông báo
-node cli.js config set ntfy.enabled true
-
-# Thay đổi topic
-node cli.js config set ntfy.topic "your-topic-name"
-
-# Thay đổi server
-node cli.js config set ntfy.server "https://ntfy.sh"
+Worker 1: Cookie 1 + Proxy 1 (hoặc no proxy)
+Worker 2: Cookie 2 + Proxy 2 (hoặc no proxy)
+Worker 3: Cookie 3 + Proxy 3 (hoặc no proxy)
 ```
 
 ## 📁 Cấu trúc File
 
 ```
 BrastelPin/
-├── Data/                    # Dữ liệu theo access code
+├── pinrange.txt            # ⚙️  PIN range chung
+├── accesscodes.txt         # 🎯 Access codes
+├── proxies.txt             # 🛡️  Danh sách proxy
+├── cookies.txt             # 🍪 Danh sách cookies
+├── Data/                   # 📊 Dữ liệu theo access code
 │   ├── 74974423/
 │   │   ├── sent_pins_history.json
 │   │   ├── blacklist_pins.json
@@ -158,10 +192,10 @@ BrastelPin/
 │       ├── sent_pins_history.json
 │       ├── blacklist_pins.json
 │       └── valid_pins_found.json
-├── Log/                     # File log
-├── cli.js                   # Giao diện CLI
-├── brastel-pin-checker.js   # Core logic
-└── cli-config.json          # Cấu hình CLI
+├── Log/                    # 📝 File log
+├── cli.js                  # 🔧 Giao diện CLI
+├── brastel-pin-checker.js  # ⚡ Core logic
+└── start-ssh.sh           # 🚀 Startup script
 ```
 
 ## 🔧 SSH Commands Cheatsheet
@@ -171,14 +205,14 @@ BrastelPin/
 ```bash
 # Sử dụng screen
 screen -S brastel-checker
-node cli.js start --workers 3
+node cli.js start --random
 # Ctrl+A, D để detach
 
 # Quay lại session
 screen -r brastel-checker
 
 # Sử dụng tmux
-tmux new-session -d -s brastel-checker 'node cli.js start --workers 3'
+tmux new-session -d -s brastel-checker 'node cli.js start --random'
 tmux attach-session -t brastel-checker
 ```
 
@@ -186,13 +220,32 @@ tmux attach-session -t brastel-checker
 
 ```bash
 # Chạy ngầm và ghi log
-nohup node cli.js start --workers 3 > brastel.log 2>&1 &
+nohup node cli.js start --random > brastel.log 2>&1 &
 
 # Xem log
 tail -f brastel.log
 
 # Kiểm tra process
 ps aux | grep node
+```
+
+### Quản lý cấu hình nhanh
+
+```bash
+# Xem config hiện tại
+node cli.js config
+
+# Thay đổi PIN range
+node cli.js config set pinrange "5000-9999"
+
+# Thêm access code mới
+node cli.js config set accesscodes "12345,67890,11111"
+
+# Kiểm tra stats
+node cli.js stats
+
+# Backup config
+tar -czf config-backup-$(date +%Y%m%d).tar.gz *.txt
 ```
 
 ### Lệnh hữu ích
@@ -206,14 +259,18 @@ while true; do clear; node cli.js stats; sleep 10; done
 
 # Backup dữ liệu
 tar -czf backup-$(date +%Y%m%d).tar.gz Data/
+
+# Xem workers info
+node cli.js config | grep "Concurrent Workers"
 ```
 
 ## 🚨 Lưu ý quan trọng
 
-1. **Chạy với quyền phù hợp**: Đảm bảo có quyền ghi file trong thư mục
-2. **Kiểm tra dung lượng**: Theo dõi dung lượng ổ cứng khi chạy lâu dài
-3. **Backup dữ liệu**: Thường xuyên backup thư mục `Data/`
-4. **Giám sát log**: Theo dõi log để phát hiện lỗi sớm
+1. **Auto Workers**: Số worker tự động = số cookies, không cần cài đặt thủ công
+2. **Fixed Proxy**: Mỗi worker dùng proxy cố định, không rotate
+3. **PIN Range chung**: Tất cả access codes dùng chung một PIN range
+4. **File config**: Thay đổi file config cần restart ứng dụng
+5. **Backup config**: Thường xuyên backup các file .txt
 
 ## 🆘 Troubleshooting
 
@@ -227,18 +284,37 @@ node --version
 rm -rf node_modules package-lock.json
 npm install
 
-# Kiểm tra quyền file
-chmod +x cli.js
+# Kiểm tra file config
+ls -la *.txt
+cat pinrange.txt
 
 # Xem log lỗi chi tiết
-node cli.js start 2>&1 | tee error.log
+node cli.js config 2>&1 | tee error.log
 ```
 
 ### Hiệu suất
 
-- **Tối ưu workers**: Thường 3-5 workers cho performance tốt nhất
+- **Tối ưu cookies**: 3-5 cookies cho performance tốt nhất
 - **Delay phù hợp**: 100-200ms delay để tránh bị block
+- **Proxy phân tán**: Dùng proxy khác nhau cho mỗi worker
 - **Giám sát memory**: Sử dụng `htop` hoặc `free -h`
+
+### Cấu hình mẫu
+
+**Cấu hình cơ bản (3 workers):**
+```bash
+# pinrange.txt
+echo -e "0\n9999" > pinrange.txt
+
+# accesscodes.txt
+echo -e "12345678\n87654321" > accesscodes.txt
+
+# cookies.txt (3 cookies = 3 workers)
+echo -e "cookie1\ncookie2\ncookie3" > cookies.txt
+
+# proxies.txt (không dùng proxy)
+touch proxies.txt
+```
 
 ## 📝 Logs
 
@@ -247,8 +323,8 @@ Logs được lưu trong thư mục `Log/` theo access code. Mỗi log file ch�
 - Thông tin PIN được kiểm tra
 - Kết quả API responses
 - Thông báo lỗi và warnings
-- Thống kê hiệu suất
+- Thống kê hiệu suất worker
 
 ---
 
-🎯 **Tối ưu cho SSH**: Ứng dụng được thiết kế đặc biệt để sử dụng hiệu quả qua SSH với giao diện CLI đầy đủ tính năng.
+🎯 **Tối ưu cho SSH**: Ứng dụng được thiết kế đặc biệt để sử dụng hiệu quả qua SSH với hệ thống cấu hình file text linh hoạt và auto workers dựa trên cookies.

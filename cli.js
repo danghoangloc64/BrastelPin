@@ -73,38 +73,45 @@ COMMANDS:
   resume <jobId>            Resume a stopped job
 
 OPTIONS for 'start':
-  --workers <num>           Number of concurrent workers (default: 1)
   --random                  Enable random PIN processing
   --max-undefined <num>     Max undefined results before stopping (default: 25)
   --delay <ms>              Delay between PIN processing in ms (default: 100)
 
 EXAMPLES:
-node cli.js start                             # Start with default settings
-  node cli.js start --workers 3               # Start with 3 workers
+ node cli.js start                            # Start with default settings
   node cli.js start --random                  # Start with random processing
   node cli.js stats 74974423                  # Show stats for specific access code
-  node cli.js config set concurrentWorkers 5  # Set worker count
+  node cli.js config set pinrange "0-9999"    # Set PIN range
+  node cli.js config set accesscodes "123,456" # Set access codes
+  node cli.js config set proxies "proxy1,proxy2" # Set proxies
 
 CONFIGURATION:
-  Configuration is stored in ${this.configFile}
-  You can edit this file directly or use 'config set' command.
+  Configuration is stored in text files:
+  - pinrange.txt (line 1: min, line 2: max)
+  - accesscodes.txt (one access code per line)
+  - proxies.txt (one proxy per line, empty = no proxy)
+  - cookies.txt (one cookie per line)
+
+  Workers count is automatically set based on cookies count.
 `);
   }
 
-  /**
+    /**
    * Display current configuration
    */
   displayConfig() {
     console.log('\n📋 Current Configuration:');
     console.log('='.repeat(40));
 
+    console.log(`\n📊 PIN Range: ${CONFIG.pinRange.start} - ${CONFIG.pinRange.end}`);
+
     console.log('\n🎯 Access Codes:');
     CONFIG.accessCodes.forEach((ac, index) => {
-      console.log(`  ${index + 1}. ${ac.accessCode} (PIN: ${ac.pinRange.start}-${ac.pinRange.end})`);
+      console.log(`  ${index + 1}. ${ac.accessCode}`);
     });
 
     console.log('\n⚙️  Worker Settings:');
-    console.log(`  - Concurrent Workers: ${CONFIG.concurrentWorkers}`);
+    console.log(`  - Concurrent Workers: ${CONFIG.concurrentWorkers} (auto from cookies)`);
     console.log(`  - Max Undefined Results: ${CONFIG.maxUndefinedResults}`);
     console.log(`  - Random Processing: ${CONFIG.randomProcessing.enabled}`);
     console.log(`  - Delay Between PINs: ${CONFIG.randomProcessing.delayBetweenPins}ms`);
@@ -123,36 +130,116 @@ CONFIGURATION:
     console.log(`  - Ntfy Enabled: ${CONFIG.ntfy.enabled}`);
     console.log(`  - Topic: ${CONFIG.ntfy.topic}`);
     console.log(`  - Server: ${CONFIG.ntfy.server}`);
+
+    console.log('\n📁 Config Files:');
+    console.log('  - pinrange.txt');
+    console.log('  - accesscodes.txt');
+    console.log('  - proxies.txt');
+    console.log('  - cookies.txt');
   }
 
-  /**
+    /**
    * Set configuration value
    */
   setConfig(key, value) {
     try {
-      // Handle nested keys like randomProcessing.enabled
-      const keys = key.split('.');
-      let target = CONFIG;
-
-      for (let i = 0; i < keys.length - 1; i++) {
-        if (!target[keys[i]]) {
-          target[keys[i]] = {};
-        }
-        target = target[keys[i]];
+      // Handle config file updates
+      if (key === 'pinrange') {
+        this.updatePinRange(value);
+      } else if (key === 'accesscodes') {
+        this.updateAccessCodes(value);
+      } else if (key === 'proxies') {
+        this.updateProxies(value);
+      } else if (key === 'cookies') {
+        this.updateCookies(value);
+      } else if (key === 'ntfy.enabled') {
+        CONFIG.ntfy.enabled = value === 'true';
+        console.log(`✅ Set ${key} = ${CONFIG.ntfy.enabled}`);
+      } else if (key === 'ntfy.topic') {
+        CONFIG.ntfy.topic = value;
+        console.log(`✅ Set ${key} = ${value}`);
+      } else if (key === 'randomProcessing.enabled') {
+        CONFIG.randomProcessing.enabled = value === 'true';
+        console.log(`✅ Set ${key} = ${CONFIG.randomProcessing.enabled}`);
+      } else if (key === 'randomProcessing.delayBetweenPins') {
+        CONFIG.randomProcessing.delayBetweenPins = parseInt(value);
+        console.log(`✅ Set ${key} = ${CONFIG.randomProcessing.delayBetweenPins}`);
+      } else if (key === 'maxUndefinedResults') {
+        CONFIG.maxUndefinedResults = parseInt(value);
+        console.log(`✅ Set ${key} = ${CONFIG.maxUndefinedResults}`);
+      } else {
+        console.log(`❌ Unknown config key: ${key}`);
+        console.log('Available keys: pinrange, accesscodes, proxies, cookies, ntfy.enabled, ntfy.topic, randomProcessing.enabled, randomProcessing.delayBetweenPins, maxUndefinedResults');
       }
-
-      // Convert value to appropriate type
-      let convertedValue = value;
-      if (value === 'true') convertedValue = true;
-      else if (value === 'false') convertedValue = false;
-      else if (!isNaN(value)) convertedValue = Number(value);
-
-      target[keys[keys.length - 1]] = convertedValue;
-
-      console.log(`✅ Set ${key} = ${convertedValue}`);
-      this.saveConfig();
     } catch (error) {
       console.error(`❌ Failed to set config: ${error.message}`);
+    }
+  }
+
+  /**
+   * Update PIN range in file
+   */
+  updatePinRange(value) {
+    try {
+      const parts = value.split('-');
+      if (parts.length !== 2) {
+        throw new Error('PIN range format should be: start-end (e.g., 0-9999)');
+      }
+      const start = parseInt(parts[0]);
+      const end = parseInt(parts[1]);
+
+      fs.writeFileSync('pinrange.txt', `${start}\n${end}`);
+      console.log(`✅ Updated PIN range: ${start} - ${end}`);
+      console.log('💡 Restart application to apply changes');
+    } catch (error) {
+      console.error(`❌ Failed to update PIN range: ${error.message}`);
+    }
+  }
+
+  /**
+   * Update access codes in file
+   */
+  updateAccessCodes(value) {
+    try {
+      const codes = value.split(',').map(code => code.trim()).filter(code => code.length > 0);
+      fs.writeFileSync('accesscodes.txt', codes.join('\n'));
+      console.log(`✅ Updated access codes: ${codes.join(', ')}`);
+      console.log('💡 Restart application to apply changes');
+    } catch (error) {
+      console.error(`❌ Failed to update access codes: ${error.message}`);
+    }
+  }
+
+  /**
+   * Update proxies in file
+   */
+  updateProxies(value) {
+    try {
+      if (value === '' || value === 'none') {
+        fs.writeFileSync('proxies.txt', '');
+        console.log('✅ Updated proxies: No proxy');
+      } else {
+        const proxies = value.split(',').map(proxy => proxy.trim()).filter(proxy => proxy.length > 0);
+        fs.writeFileSync('proxies.txt', proxies.join('\n'));
+        console.log(`✅ Updated proxies: ${proxies.length} proxy(ies)`);
+      }
+      console.log('💡 Restart application to apply changes');
+    } catch (error) {
+      console.error(`❌ Failed to update proxies: ${error.message}`);
+    }
+  }
+
+  /**
+   * Update cookies in file
+   */
+  updateCookies(value) {
+    try {
+      const cookies = value.split('|||').map(cookie => cookie.trim()).filter(cookie => cookie.length > 0);
+      fs.writeFileSync('cookies.txt', cookies.join('\n'));
+      console.log(`✅ Updated cookies: ${cookies.length} cookie(s)`);
+      console.log('💡 Restart application to apply changes');
+    } catch (error) {
+      console.error(`❌ Failed to update cookies: ${error.message}`);
     }
   }
 
@@ -210,15 +297,12 @@ CONFIGURATION:
     });
   }
 
-  /**
+    /**
    * Start PIN checking process
    */
   async startChecker(options = {}) {
     try {
       // Apply command line options
-      if (options.workers) {
-        CONFIG.concurrentWorkers = parseInt(options.workers);
-      }
       if (options.random) {
         CONFIG.randomProcessing.enabled = true;
       }
@@ -230,7 +314,7 @@ CONFIGURATION:
       }
 
       console.log('🚀 Starting Brastel PIN Checker...');
-      console.log(`⚙️  Workers: ${CONFIG.concurrentWorkers}`);
+      console.log(`⚙️  Workers: ${CONFIG.concurrentWorkers} (auto from ${CONFIG.cookies.length} cookies)`);
       console.log(`🎲 Random Processing: ${CONFIG.randomProcessing.enabled}`);
       console.log(`⏱️  Delay: ${CONFIG.randomProcessing.delayBetweenPins}ms`);
       console.log('='.repeat(50));
