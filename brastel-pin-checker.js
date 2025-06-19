@@ -596,7 +596,7 @@ class Logger {
     const emoji = EMOJIS[level] || '📝';
     const fullMessage = `[${timestamp}] ${emoji} [${this.accessCode}] ${message}`;
 
-    // console.log(fullMessage);
+    console.log(fullMessage);
     fsSync.appendFileSync(this.logFile, `${fullMessage}\n`);
   }
 
