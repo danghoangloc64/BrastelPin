@@ -1442,40 +1442,6 @@ class NtfyNotifier {
   }
 }
 
-/**
- * Test function to verify completion notification
- * @param {string} accessCode - Test access code
- * @param {string} status - Test status: 'found', 'completed', 'stopped'
- */
-async function testCompletionNotification(accessCode = 'TEST123', status = 'completed') {
-  const logger = new Logger(accessCode);
-  const ntfyNotifier = new NtfyNotifier(logger);
-
-  const testStats = {
-    sentPinsCount: 100,
-    blacklistPinsCount: 5,
-    validPinsCount: 0,
-    validNonBlacklistedCount: 0,
-    validNonBlacklistedPins: []
-  };
-
-  const completionInfo = {
-    status,
-    reason: `Test notification for status: ${status}`,
-    stats: testStats
-  };
-
-  logger.info('=== TESTING COMPLETION NOTIFICATION ===');
-  logger.info(`Testing with status: ${status}`);
-
-  try {
-    await ntfyNotifier.sendAccessCodeCompletionNotification(accessCode, completionInfo);
-    logger.success('Test notification sent successfully');
-  } catch (error) {
-    logger.error(`Test notification failed: ${error.message}`);
-  }
-}
-
 // Start the application
 if (require.main === module) {
   const app = new BrastelPinChecker();
@@ -1490,6 +1456,5 @@ module.exports = {
   CONFIG,
   Utils,
   LOG_LEVELS,
-  API_RESULT_CODES,
-  testCompletionNotification
+  API_RESULT_CODES
 };
