@@ -66,7 +66,7 @@ class ConfigLoader {
       maxRetries: 10,
       retryDelay: 3000,
       requestTimeout: 60000,
-      maxUndefinedResults: 25,
+      maxUndefinedResults: 10,
 
       // Random processing configuration
       randomProcessing: {
@@ -744,6 +744,17 @@ class PinChecker {
     if (this.undefinedCount >= CONFIG.maxUndefinedResults) {
       this.shouldStopWorker = true;
       this.logger.error(`Worker ${workerId} - Undefined results limit exceeded (${this.undefinedCount}/${CONFIG.maxUndefinedResults}). Stopping this worker only.`);
+
+      // Send immediate notification about worker being stopped
+      this.ntfyNotifier.sendWorkerStoppedNotification(
+        this.accessCode,
+        workerId,
+        this.undefinedCount,
+        CONFIG.maxUndefinedResults
+      ).catch(error => {
+        this.logger.error(`Failed to send worker stopped notification: ${error.message}`);
+      });
+
       return true;
     }
     return false;
@@ -776,13 +787,6 @@ class PinChecker {
       // Valid PIN found
       this.logger.found(`Worker ${workerId} - FOUND VALID PIN: ${pin}`);
       this.fileManager.addValidPin(pin);
-
-      // Send ntfy notification
-      try {
-        await this.ntfyNotifier.sendPinFoundNotification(this.accessCode, pin, workerId);
-      } catch (error) {
-        this.logger.error(`Failed to send ntfy notification: ${error.message}`);
-      }
 
       this.found = true;
       return true;
@@ -940,6 +944,8 @@ class SingleAccessCodeChecker {
     this.fileManager = new FileManager(this.logger, this.accessCode);
     this.proxyManager = new ProxyManager(this.logger);
     this.pinChecker = new PinChecker(this.logger, this.proxyManager, this.fileManager, this.accessCode);
+    this.workersStoppedByUndefined = 0; // Track workers stopped by undefined limit
+    this.totalWorkers = 0; // Track total workers
   }
 
   /**
@@ -1015,12 +1021,83 @@ class SingleAccessCodeChecker {
   }
 
   /**
+   * Handle completion status and send notifications
+   * @param {boolean} hadExistingValidPins - Whether valid non-blacklisted PINs existed before processing
+   * @param {Array<number>} unsentPins - Array of unsent PINs that were available for processing
+   * @returns {Promise<void>}
+   */
+  async handleCompletion(hadExistingValidPins, unsentPins) {
+    const stats = this.fileManager.getStatistics();
+    const ntfyNotifier = new NtfyNotifier(this.logger);
+
+    let status, reason, logMessage;
+
+    // Debug logging
+    this.logger.info('=== COMPLETION DEBUG ===');
+    this.logger.info(`hadExistingValidPins: ${hadExistingValidPins}`);
+    this.logger.info(`this.pinChecker.found: ${this.pinChecker.found}`);
+    this.logger.info(`unsentPins.length: ${unsentPins.length}`);
+    this.logger.info(`stats.validNonBlacklistedCount: ${stats.validNonBlacklistedCount}`);
+    this.logger.info(`workersStoppedByUndefined: ${this.workersStoppedByUndefined}/${this.totalWorkers}`);
+
+    // Determine completion status and reason
+    if (hadExistingValidPins) {
+      // Had existing valid PINs before processing started
+      status = 'found';
+      reason = 'Valid non-blacklisted PIN(s) already existed before processing';
+      logMessage = `✅ AccessCode ${this.accessCode} completion: Valid PIN(s) already existed`;
+    } else if (this.pinChecker.found || stats.validNonBlacklistedCount > 0) {
+      // Found valid PIN during processing
+      status = 'found';
+      reason = 'Valid PIN found during processing';
+      logMessage = `✅ AccessCode ${this.accessCode} completion: Valid PIN found during processing`;
+    } else if (this.workersStoppedByUndefined > 0) {
+      // Some workers were stopped due to undefined results limit
+      status = 'stopped';
+      reason = `Processing stopped: ${this.workersStoppedByUndefined}/${this.totalWorkers} worker(s) exceeded undefined results limit (${CONFIG.maxUndefinedResults})`;
+      logMessage = `🛑 AccessCode ${this.accessCode} completion: ${this.workersStoppedByUndefined} worker(s) stopped due to undefined results limit`;
+    } else if (unsentPins.length === 0) {
+      // No unsent PINs were available to process
+      status = 'completed';
+      reason = 'No unsent PINs available for processing (all PINs already sent)';
+      logMessage = `⚠️ AccessCode ${this.accessCode} completion: All PINs already processed`;
+    } else {
+      // Processing completed without finding valid PIN
+      status = 'completed';
+      reason = 'Processing completed without finding valid PIN';
+      logMessage = `⚠️ AccessCode ${this.accessCode} completion: No valid PIN found after processing`;
+    }
+
+    // Log the completion status
+    this.logger.info('=== COMPLETION STATUS ===');
+    this.logger.info(logMessage);
+    this.logger.info(`Status: ${status}`);
+    this.logger.info(`Reason: ${reason}`);
+    this.logger.info(`Final Stats - Sent: ${stats.sentPinsCount}, Blacklisted: ${stats.blacklistPinsCount}, Valid: ${stats.validPinsCount}, Valid Non-Blacklisted: ${stats.validNonBlacklistedCount}`);
+
+    // Send ntfy notification
+    try {
+      const completionInfo = {
+        status,
+        reason,
+        stats
+      };
+
+      await ntfyNotifier.sendAccessCodeCompletionNotification(this.accessCode, completionInfo);
+      this.logger.success('AccessCode completion notification sent via ntfy');
+    } catch (error) {
+      this.logger.error(`Failed to send AccessCode completion notification: ${error.message}`);
+    }
+  }
+
+  /**
    * Create workers
    * @param {Array<Array<number>>} pinBatches - PIN batches for workers
    * @returns {Array<Promise>} Array of worker promises
    */
   createWorkers(pinBatches) {
     const workers = [];
+    this.totalWorkers = CONFIG.concurrentWorkers;
 
     for (let i = 0; i < CONFIG.concurrentWorkers; i++) {
       // Create a separate PinChecker instance for each worker to avoid shared state
@@ -1038,7 +1115,16 @@ class SingleAccessCodeChecker {
 
       const worker = new Worker(i + 1, this.logger, this.proxyManager, workerPinChecker, this.fileManager, proxy, cookie);
 
-      workers.push(worker.process(pinBatches[i] || []));
+      // Create a wrapper promise that tracks if worker was stopped due to undefined results
+      const workerPromise = worker.process(pinBatches[i] || []).then(() => {
+        // Check if this worker was stopped due to undefined results
+        if (workerPinChecker.shouldStopWorker) {
+          this.workersStoppedByUndefined++;
+          this.logger.warning(`Worker ${i + 1} was stopped due to undefined results limit (Total stopped: ${this.workersStoppedByUndefined}/${this.totalWorkers})`);
+        }
+      });
+
+      workers.push(workerPromise);
     }
 
     return workers;
@@ -1057,7 +1143,8 @@ class SingleAccessCodeChecker {
     this.displayStats();
 
     // Check if we already have valid non-blacklisted PINs
-    if (this.fileManager.hasValidNonBlacklistedPins()) {
+    const hadExistingValidPins = this.fileManager.hasValidNonBlacklistedPins();
+    if (hadExistingValidPins) {
       const validPins = this.fileManager.getValidNonBlacklistedPins();
       this.logger.success(`AccessCode ${this.accessCode} already has valid PIN(s): ${validPins.map(p => p.pin).join(', ')}`);
       this.logger.info('These PINs are not blacklisted, so processing is complete for this accessCode.');
@@ -1066,11 +1153,20 @@ class SingleAccessCodeChecker {
       // Mark as found to stop any further processing
       this.pinChecker.found = true;
 
+      await this.handleCompletion(true, []);
+
       return true; // Continue to next accessCode
     }
 
     const pins = this.generatePinRange();
     const pinBatches = this.distributePins(pins);
+
+    // Get unsent pins for completion tracking
+    const unsentPins = pins.filter(pin => {
+      const formattedPin = Utils.formatPin(pin);
+      return !this.fileManager.isPinSent(formattedPin);
+    });
+
     const workers = this.createWorkers(pinBatches);
 
     await Promise.all(workers);
@@ -1079,6 +1175,8 @@ class SingleAccessCodeChecker {
 
     // Display final statistics
     this.displayStats();
+
+    await this.handleCompletion(false, unsentPins);
 
     return true; // Continue to next accessCode
   }
@@ -1195,7 +1293,7 @@ class NtfyNotifier {
   sanitizeHeader(text) {
     // Remove emojis and special characters that might cause HTTP header issues
     return text.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '')
-      .replace(/[^\x00-\x7F]/g, '') // Remove non-ASCII characters
+      .replace(/[^\x20-\x7E]/g, '') // Remove non-printable ASCII characters (keep only printable ASCII)
       .trim();
   }
 
@@ -1254,6 +1352,128 @@ class NtfyNotifier {
 
     return await this.sendNotification(title, message, '5'); // High priority
   }
+
+  /**
+   * Send accesscode completion notification
+   * @param {string} accessCode - Access code that was processed
+   * @param {Object} completionInfo - Information about the completion
+   * @param {string} completionInfo.status - Status: 'found', 'completed', 'stopped'
+   * @param {string} completionInfo.reason - Reason for completion
+   * @param {Object} completionInfo.stats - Statistics from processing
+   * @returns {Promise<boolean>} True if notification sent successfully
+   */
+  async sendAccessCodeCompletionNotification(accessCode, completionInfo) {
+    const { status, reason, stats } = completionInfo;
+
+    let title = '';
+    let message = '';
+    let priority = '3'; // Default priority
+
+    switch (status) {
+    case 'found':
+      title = 'AccessCode Processing Complete - PIN Found';
+      message = '✅ AccessCode processing completed successfully!\n\n' +
+          `Access Code: ${accessCode}\n` +
+          'Status: Valid PIN(s) found\n' +
+          `Valid PINs: ${stats.validNonBlacklistedPins.map(p => p.pin).join(', ')}\n` +
+          `Total sent: ${stats.sentPinsCount}\n` +
+          `Blacklisted: ${stats.blacklistPinsCount}\n` +
+          `Reason: ${reason}\n` +
+          `Time: ${new Date().toLocaleString()}`;
+      priority = '4'; // High priority for success
+      break;
+
+    case 'completed':
+      title = 'AccessCode Processing Complete - No PIN Found';
+      message = '⚠️ AccessCode processing completed without finding valid PINs\n\n' +
+          `Access Code: ${accessCode}\n` +
+          'Status: No valid PIN found\n' +
+          `Total sent: ${stats.sentPinsCount}\n` +
+          `Blacklisted: ${stats.blacklistPinsCount}\n` +
+          `Reason: ${reason}\n` +
+          `Time: ${new Date().toLocaleString()}`;
+      priority = '3'; // Normal priority
+      break;
+
+    case 'stopped':
+      title = 'AccessCode Processing Stopped';
+      message = '🛑 AccessCode processing was stopped\n\n' +
+          `Access Code: ${accessCode}\n` +
+          'Status: Processing stopped\n' +
+          `Total sent: ${stats.sentPinsCount}\n` +
+          `Blacklisted: ${stats.blacklistPinsCount}\n` +
+          `Reason: ${reason}\n` +
+          `Time: ${new Date().toLocaleString()}`;
+      priority = '2'; // Low priority for stopped
+      break;
+
+    default:
+      title = 'AccessCode Processing Complete';
+      message = 'ℹ️ AccessCode processing finished\n\n' +
+          `Access Code: ${accessCode}\n` +
+          `Status: ${status}\n` +
+          `Total sent: ${stats.sentPinsCount}\n` +
+          `Reason: ${reason}\n` +
+          `Time: ${new Date().toLocaleString()}`;
+      priority = '3';
+    }
+
+    return await this.sendNotification(title, message, priority);
+  }
+
+  /**
+   * Send worker stopped notification
+   * @param {string} accessCode - Access code
+   * @param {number} workerId - Worker ID that was stopped
+   * @param {number} undefinedCount - Number of undefined results that caused the stop
+   * @param {number} maxUndefinedResults - Maximum allowed undefined results
+   * @returns {Promise<boolean>} True if notification sent successfully
+   */
+  async sendWorkerStoppedNotification(accessCode, workerId, undefinedCount, maxUndefinedResults) {
+    const title = 'Brastel Worker Stopped - Undefined Limit';
+    const message = '🛑 Worker stopped due to undefined results!\n\n' +
+                   `Access Code: ${accessCode}\n` +
+                   `Worker ID: ${workerId}\n` +
+                   `Undefined results: ${undefinedCount}/${maxUndefinedResults}\n` +
+                   `Time: ${new Date().toLocaleString()}\n\n` +
+                   'This worker will stop processing. Other workers may continue.';
+
+    return await this.sendNotification(title, message, '3'); // Normal priority for worker stop
+  }
+}
+
+/**
+ * Test function to verify completion notification
+ * @param {string} accessCode - Test access code
+ * @param {string} status - Test status: 'found', 'completed', 'stopped'
+ */
+async function testCompletionNotification(accessCode = 'TEST123', status = 'completed') {
+  const logger = new Logger(accessCode);
+  const ntfyNotifier = new NtfyNotifier(logger);
+
+  const testStats = {
+    sentPinsCount: 100,
+    blacklistPinsCount: 5,
+    validPinsCount: 0,
+    validNonBlacklistedCount: 0,
+    validNonBlacklistedPins: []
+  };
+
+  const completionInfo = {
+    status,
+    reason: `Test notification for status: ${status}`,
+    stats: testStats
+  };
+
+  logger.info('=== TESTING COMPLETION NOTIFICATION ===');
+  logger.info(`Testing with status: ${status}`);
+
+  try {
+    await ntfyNotifier.sendAccessCodeCompletionNotification(accessCode, completionInfo);
+    logger.success('Test notification sent successfully');
+  } catch (error) {
+    logger.error(`Test notification failed: ${error.message}`);
+  }
 }
 
 // Start the application
@@ -1270,5 +1490,6 @@ module.exports = {
   CONFIG,
   Utils,
   LOG_LEVELS,
-  API_RESULT_CODES
+  API_RESULT_CODES,
+  testCompletionNotification
 };
