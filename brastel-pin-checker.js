@@ -1031,15 +1031,6 @@ class SingleAccessCodeChecker {
     const ntfyNotifier = new NtfyNotifier(this.logger);
 
     let status, reason, logMessage;
-
-    // Debug logging
-    this.logger.info('=== COMPLETION DEBUG ===');
-    this.logger.info(`hadExistingValidPins: ${hadExistingValidPins}`);
-    this.logger.info(`this.pinChecker.found: ${this.pinChecker.found}`);
-    this.logger.info(`unsentPins.length: ${unsentPins.length}`);
-    this.logger.info(`stats.validNonBlacklistedCount: ${stats.validNonBlacklistedCount}`);
-    this.logger.info(`workersStoppedByUndefined: ${this.workersStoppedByUndefined}/${this.totalWorkers}`);
-
     // Determine completion status and reason
     if (hadExistingValidPins) {
       // Had existing valid PINs before processing started
