@@ -112,6 +112,7 @@ class ConfigLoader {
         enabled: true,
         server: 'https://ntfy.sh',
         topic: 'dhloc',
+        topic_error: 'dhloc_error',
         priority: '5'
       }
     };
@@ -1075,7 +1076,6 @@ class SingleAccessCodeChecker {
       };
 
       await ntfyNotifier.sendAccessCodeCompletionNotification(this.accessCode, completionInfo);
-      this.logger.success('AccessCode completion notification sent via ntfy');
     } catch (error) {
       this.logger.error(`Failed to send AccessCode completion notification: ${error.message}`);
     }
@@ -1272,6 +1272,7 @@ class NtfyNotifier {
   constructor(logger) {
     this.logger = logger;
     this.topic = CONFIG.ntfy.topic;
+    this.topic_error = CONFIG.ntfy.topic_error;
     this.server = CONFIG.ntfy.server;
     this.enabled = CONFIG.ntfy.enabled;
   }
@@ -1302,7 +1303,10 @@ class NtfyNotifier {
     }
 
     try {
-      const url = `${this.server}/${this.topic}`;
+      let url = `${this.server}/${this.topic}`;
+      if (priority !== '4' && priority !== '5') {
+        url = `${this.server}/${this.topic_error}`;
+      }
 
       // Sanitize title for HTTP header
       const sanitizedTitle = this.sanitizeHeader(title);
@@ -1318,7 +1322,6 @@ class NtfyNotifier {
       });
 
       if (response.ok) {
-        this.logger.success(`Ntfy notification sent successfully: ${sanitizedTitle}`);
         return true;
       } else {
         this.logger.error(`Failed to send ntfy notification: ${response.status} ${response.statusText}`);
@@ -1328,20 +1331,6 @@ class NtfyNotifier {
       this.logger.error(`Error sending ntfy notification: ${error.message}`);
       return false;
     }
-  }
-
-  /**
-   * Send PIN found notification
-   * @param {string} accessCode - Access code
-   * @param {string} pin - Valid PIN found
-   * @param {string} workerId - Worker ID that found the PIN
-   * @returns {Promise<boolean>} True if notification sent successfully
-   */
-  async sendPinFoundNotification(accessCode, pin, workerId) {
-    const title = 'Brastel PIN Found!'; // Removed emoji from title
-    const message = `🎯 Brastel PIN Found!\n\nAccess Code: ${accessCode}\nPIN: ${pin}\nWorker: ${workerId}\nTime: ${new Date().toLocaleString()}`;
-
-    return await this.sendNotification(title, message, '5'); // High priority
   }
 
   /**
