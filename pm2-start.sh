@@ -1,5 +1,5 @@
 #!/bin/bash
-
+pm2 stop 0
 # Đường dẫn đến file Node.js
 SCRIPT="cli.js"
 

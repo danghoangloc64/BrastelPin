@@ -70,8 +70,8 @@ class ConfigLoader {
 
       // Random processing configuration
       randomProcessing: {
-        enabled: true,
-        delayBetweenPins: 100
+        enabled: false,
+        delayBetweenPins: 10
       },
 
       // Folder paths
@@ -111,8 +111,8 @@ class ConfigLoader {
       ntfy: {
         enabled: true,
         server: 'https://ntfy.sh',
-        topic: 'dhloc',
-        topic_error: 'dhloc_error',
+        topic: '7213784aafb',
+        topic_error: '7213784aafb',
         priority: '5'
       }
     };
@@ -172,10 +172,7 @@ class ConfigLoader {
     try {
       if (!fsSync.existsSync(this.configFiles.accessCodes)) {
         console.log(`⚠️  ${this.configFiles.accessCodes} not found, using default access codes`);
-        return [
-          { accessCode: '74974423', pinRange },
-          { accessCode: '33849108', pinRange }
-        ];
+        return [];
       }
 
       const data = fsSync.readFileSync(this.configFiles.accessCodes, 'utf8')
@@ -193,10 +190,7 @@ class ConfigLoader {
       return accessCodes;
     } catch (error) {
       console.log(`❌ Error loading ${this.configFiles.accessCodes}: ${error.message}`);
-      return [
-        { accessCode: '74974423', pinRange },
-        { accessCode: '33849108', pinRange }
-      ];
+      return [];
     }
   }
 
@@ -235,10 +229,8 @@ class ConfigLoader {
   loadCookies() {
     try {
       if (!fsSync.existsSync(this.configFiles.cookies)) {
-        console.log(`⚠️  ${this.configFiles.cookies} not found, using default cookies`);
-        return [
-          '_ga=GA1.2.2004863075.1749788627; ASP.NET_SessionId=kkmvt2y4ni0d4bp1sg0vz3xf; AWSELB=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9F2459D1D823108D586FB065E7B5F9002AD22EB5161F2C7AB3014A70051CE4FA39D6AA5C0E88A842A861D33DC4EA44715; AWSELBCORS=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9F2459D1D823108D586FB065E7B5F9002AD22EB5161F2C7AB3014A70051CE4FA39D6AA5C0E88A842A861D33DC4EA44715; _gid=GA1.2.756149190.1750037918; ASPSESSIONIDCQDCDADQ=EMMPDBIDOPDCKJKJCDCMKLBJ; _gat=1'
-        ];
+        console.log(`⚠️  ${this.configFiles.cookies} not found`);
+        return [];
       }
 
       const data = fsSync.readFileSync(this.configFiles.cookies, 'utf8')
@@ -255,9 +247,7 @@ class ConfigLoader {
       return data;
     } catch (error) {
       console.log(`❌ Error loading ${this.configFiles.cookies}: ${error.message}`);
-      return [
-        '_ga=GA1.2.2004863075.1749788627; ASP.NET_SessionId=kkmvt2y4ni0d4bp1sg0vz3xf; AWSELB=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9F2459D1D823108D586FB065E7B5F9002AD22EB5161F2C7AB3014A70051CE4FA39D6AA5C0E88A842A861D33DC4EA44715; AWSELBCORS=1BB79F7B04C9CBC0EF6C78B167088EAC4E335C02F9F2459D1D823108D586FB065E7B5F9002AD22EB5161F2C7AB3014A70051CE4FA39D6AA5C0E88A842A861D33DC4EA44715; _gid=GA1.2.756149190.1750037918; ASPSESSIONIDCQDCDADQ=EMMPDBIDOPDCKJKJCDCMKLBJ; _gat=1'
-      ];
+      return [];
     }
   }
 }
@@ -1169,6 +1159,9 @@ class SingleAccessCodeChecker {
 
     await this.handleCompletion(false, unsentPins);
 
+    if (this.workersStoppedByUndefined > 0) {
+      return false;
+    }
     return true; // Continue to next accessCode
   }
 }
@@ -1354,12 +1347,7 @@ class NtfyNotifier {
       title = 'AccessCode Processing Complete - PIN Found';
       message = '✅ AccessCode processing completed successfully!\n\n' +
           `Access Code: ${accessCode}\n` +
-          'Status: Valid PIN(s) found\n' +
-          `Valid PINs: ${stats.validNonBlacklistedPins.map(p => p.pin).join(', ')}\n` +
-          `Total sent: ${stats.sentPinsCount}\n` +
-          `Blacklisted: ${stats.blacklistPinsCount}\n` +
-          `Reason: ${reason}\n` +
-          `Time: ${new Date().toLocaleString()}`;
+          `Valid PINs: ${stats.validNonBlacklistedPins.map(p => p.pin).join(', ')}`;
       priority = '4'; // High priority for success
       break;
 
