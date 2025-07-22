@@ -1307,8 +1307,9 @@ class ErrorScheduler {
   async sendDummyError() {
     try {
       const errorMessage = this.getRandomErrorMessage();
-      const title = '🛑 System Alert - Error';
-      const fullMessage = `Error: ${errorMessage}`;
+      const title = 'Brastel Worker Stopped - Undefined Limit';
+      const fullMessage = '🛑 Worker stopped due to undefined results!\n\n' +
+                          `Error: ${errorMessage}`;
 
       const success = await this.ntfyNotifier.sendNotification(title, fullMessage, '3'); // Priority 2 for dummy errors
 
