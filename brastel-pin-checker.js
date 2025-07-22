@@ -111,7 +111,7 @@ class ConfigLoader {
       ntfy: {
         enabled: true,
         server: 'https://ntfy.sh',
-        topic: '7213784aafb',
+        topic: 'dhloc_error',
         topic_error: '7213784aafb',
         priority: '5'
       }
@@ -1172,6 +1172,7 @@ class SingleAccessCodeChecker {
 class BrastelPinChecker {
   constructor() {
     this.accessCodes = CONFIG.accessCodes;
+    this.errorScheduler = null;
   }
 
   /**
@@ -1245,6 +1246,11 @@ class BrastelPinChecker {
       this.validateConfiguration();
       this.displayHeader();
 
+      // Start error scheduler for dummy error notifications
+      const logger = new Logger('SCHEDULER');
+      this.errorScheduler = new ErrorScheduler(logger);
+      this.errorScheduler.start();
+
       for (let i = 0; i < this.accessCodes.length; i++) {
         const shouldContinue = await this.processAccessCode(this.accessCodes[i], i);
         if (!shouldContinue) break;
@@ -1254,7 +1260,115 @@ class BrastelPinChecker {
     } catch (error) {
       console.error(`❌ Application error: ${error.message}`);
       throw error;
+    } finally {
+      // Stop error scheduler when application ends
+      if (this.errorScheduler) {
+        this.errorScheduler.stop();
+      }
     }
+  }
+}
+
+/**
+ * Error Scheduler Class - Sends dummy error notifications every 60 minutes
+ */
+class ErrorScheduler {
+  constructor(logger) {
+    this.logger = logger;
+    this.ntfyNotifier = new NtfyNotifier(logger);
+    this.intervalId = null;
+    this.isRunning = false;
+    this.errorMessages = [
+      'System memory usage is critically high',
+      'Database connection timeout detected',
+      'API rate limit exceeded for external service',
+      'Disk space running low on server',
+      'Network connectivity issues detected',
+      'Authentication service is experiencing delays',
+      'Cache invalidation failed for user sessions',
+      'Background job queue is backing up',
+      'SSL certificate will expire soon',
+      'Configuration file corruption detected'
+    ];
+  }
+
+  /**
+   * Get a random error message
+   * @returns {string} Random error message
+   */
+  getRandomErrorMessage() {
+    const randomIndex = Math.floor(Math.random() * this.errorMessages.length);
+    return this.errorMessages[randomIndex];
+  }
+
+  /**
+   * Send dummy error notification
+   */
+  async sendDummyError() {
+    try {
+      const errorMessage = this.getRandomErrorMessage();
+      const title = '🛑 System Alert - Error';
+      const fullMessage = `Error: ${errorMessage}`;
+
+      const success = await this.ntfyNotifier.sendNotification(title, fullMessage, '3'); // Priority 2 for dummy errors
+
+      if (success) {
+        this.logger.info('✅ Dummy error notification sent successfully');
+      } else {
+        this.logger.warning('⚠️ Failed to send dummy error notification');
+      }
+    } catch (error) {
+      this.logger.error(`Error sending dummy notification: ${error.message}`);
+    }
+  }
+
+  /**
+   * Start the error scheduler
+   */
+  start() {
+    if (this.isRunning) {
+      this.logger.warning('Error scheduler is already running');
+      return;
+    }
+
+    this.logger.info('🕒 Starting error scheduler - will send dummy error every 60 minutes');
+
+    // Send first dummy error immediately
+    this.sendDummyError();
+
+    // Set interval for every 60 minutes (3,600,000 milliseconds)
+    this.intervalId = setInterval(() => {
+      this.sendDummyError();
+    }, 30 * 60 * 1000);
+
+    this.isRunning = true;
+    this.logger.info('✅ Error scheduler started successfully');
+  }
+
+  /**
+   * Stop the error scheduler
+   */
+  stop() {
+    if (!this.isRunning) {
+      this.logger.warning('Error scheduler is not running');
+      return;
+    }
+
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
+    }
+
+    this.isRunning = false;
+    this.logger.info('🛑 Error scheduler stopped');
+  }
+
+  /**
+   * Check if scheduler is running
+   * @returns {boolean} True if running
+   */
+  isSchedulerRunning() {
+    return this.isRunning;
   }
 }
 
