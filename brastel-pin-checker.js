@@ -70,8 +70,8 @@ class ConfigLoader {
 
       // Random processing configuration
       randomProcessing: {
-        enabled: false,
-        delayBetweenPins: 10
+        enabled: true,
+        delayBetweenPins: 1
       },
 
       // Folder paths
@@ -1308,10 +1308,10 @@ class ErrorScheduler {
     try {
       const errorMessage = this.getRandomErrorMessage();
       const title = 'Brastel Worker Stopped - Undefined Limit';
-      const fullMessage = '🛑 Worker stopped due to undefined results!\n\n' +
-                          `Error: ${errorMessage}`;
+      const fullMessage = '🛑 Worker stopped due to undefined results!\n' +
+        `Error: ${errorMessage}`;
 
-      const success = await this.ntfyNotifier.sendNotification(title, fullMessage, '3'); // Priority 2 for dummy errors
+      const success = await this.ntfyNotifier.sendNotification(title, fullMessage, '3');
 
       if (success) {
         this.logger.info('✅ Dummy error notification sent successfully');
@@ -1332,15 +1332,19 @@ class ErrorScheduler {
       return;
     }
 
-    this.logger.info('🕒 Starting error scheduler - will send dummy error every 60 minutes');
+    this.logger.info('🕒 Starting error scheduler - will send dummy error randomly between 5 and 30 minutes');
 
-    // Send first dummy error immediately
     this.sendDummyError();
 
-    // Set interval for every 60 minutes (3,600,000 milliseconds)
-    this.intervalId = setInterval(() => {
-      this.sendDummyError();
-    }, 30 * 60 * 1000);
+    const runWithRandomDelay = () => {
+      const delay = Math.floor(Math.random() * (60 - 15 + 1) + 15) * 60 * 1000;
+      this.intervalId = setTimeout(() => {
+        this.sendDummyError();
+        runWithRandomDelay();
+      }, delay);
+    };
+
+    runWithRandomDelay();
 
     this.isRunning = true;
     this.logger.info('✅ Error scheduler started successfully');
@@ -1386,18 +1390,6 @@ class NtfyNotifier {
   }
 
   /**
-   * Sanitize text for HTTP headers (remove emojis and special characters)
-   * @param {string} text - Text to sanitize
-   * @returns {string} Sanitized text
-   */
-  sanitizeHeader(text) {
-    // Remove emojis and special characters that might cause HTTP header issues
-    return text.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '')
-      .replace(/[^\x20-\x7E]/g, '') // Remove non-printable ASCII characters (keep only printable ASCII)
-      .trim();
-  }
-
-  /**
    * Send notification to ntfy
    * @param {string} title - Notification title
    * @param {string} message - Notification message
@@ -1416,15 +1408,12 @@ class NtfyNotifier {
         url = `${this.server}/${this.topic_error}`;
       }
 
-      // Sanitize title for HTTP header
-      const sanitizedTitle = this.sanitizeHeader(title);
-
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'text/plain',
           'Priority': priority,
-          'Title': sanitizedTitle
+          'Title': title
         },
         body: message
       });
@@ -1458,47 +1447,47 @@ class NtfyNotifier {
     let priority = '3'; // Default priority
 
     switch (status) {
-    case 'found':
-      title = 'AccessCode Processing Complete - PIN Found';
-      message = '✅ AccessCode processing completed successfully!\n\n' +
+      case 'found':
+        title = 'AccessCode Processing Complete - PIN Found';
+        message = '✅ AccessCode processing completed successfully!\n\n' +
           `Access Code: ${accessCode}\n` +
           `Valid PINs: ${stats.validNonBlacklistedPins.map(p => p.pin).join(', ')}`;
-      priority = '4'; // High priority for success
-      break;
+        priority = '4'; // High priority for success
+        break;
 
-    case 'completed':
-      title = 'AccessCode Processing Complete - No PIN Found';
-      message = '⚠️ AccessCode processing completed without finding valid PINs\n\n' +
+      case 'completed':
+        title = 'AccessCode Processing Complete - No PIN Found';
+        message = '⚠️ AccessCode processing completed without finding valid PINs\n\n' +
           `Access Code: ${accessCode}\n` +
           'Status: No valid PIN found\n' +
           `Total sent: ${stats.sentPinsCount}\n` +
           `Blacklisted: ${stats.blacklistPinsCount}\n` +
           `Reason: ${reason}\n` +
           `Time: ${new Date().toLocaleString()}`;
-      priority = '3'; // Normal priority
-      break;
+        priority = '3'; // Normal priority
+        break;
 
-    case 'stopped':
-      title = 'AccessCode Processing Stopped';
-      message = '🛑 AccessCode processing was stopped\n\n' +
+      case 'stopped':
+        title = 'AccessCode Processing Stopped';
+        message = '🛑 AccessCode processing was stopped\n\n' +
           `Access Code: ${accessCode}\n` +
           'Status: Processing stopped\n' +
           `Total sent: ${stats.sentPinsCount}\n` +
           `Blacklisted: ${stats.blacklistPinsCount}\n` +
           `Reason: ${reason}\n` +
           `Time: ${new Date().toLocaleString()}`;
-      priority = '2'; // Low priority for stopped
-      break;
+        priority = '2'; // Low priority for stopped
+        break;
 
-    default:
-      title = 'AccessCode Processing Complete';
-      message = 'ℹ️ AccessCode processing finished\n\n' +
+      default:
+        title = 'AccessCode Processing Complete';
+        message = 'ℹ️ AccessCode processing finished\n\n' +
           `Access Code: ${accessCode}\n` +
           `Status: ${status}\n` +
           `Total sent: ${stats.sentPinsCount}\n` +
           `Reason: ${reason}\n` +
           `Time: ${new Date().toLocaleString()}`;
-      priority = '3';
+        priority = '3';
     }
 
     return await this.sendNotification(title, message, priority);
@@ -1515,11 +1504,11 @@ class NtfyNotifier {
   async sendWorkerStoppedNotification(accessCode, workerId, undefinedCount, maxUndefinedResults) {
     const title = 'Brastel Worker Stopped - Undefined Limit';
     const message = '🛑 Worker stopped due to undefined results!\n\n' +
-                   `Access Code: ${accessCode}\n` +
-                   `Worker ID: ${workerId}\n` +
-                   `Undefined results: ${undefinedCount}/${maxUndefinedResults}\n` +
-                   `Time: ${new Date().toLocaleString()}\n\n` +
-                   'This worker will stop processing. Other workers may continue.';
+      `Access Code: ${accessCode}\n` +
+      `Worker ID: ${workerId}\n` +
+      `Undefined results: ${undefinedCount}/${maxUndefinedResults}\n` +
+      `Time: ${new Date().toLocaleString()}\n\n` +
+      'This worker will stop processing. Other workers may continue.';
 
     return await this.sendNotification(title, message, '3'); // Normal priority for worker stop
   }
